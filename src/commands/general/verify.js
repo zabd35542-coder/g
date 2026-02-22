@@ -54,6 +54,18 @@ export default {
           embeds: [embed],
           ephemeral: false,
         });
+        
+        // If DM failed, send ephemeral notification
+        if (result.dmFailed) {
+          try {
+            await interaction.followUp({
+              content: `⚠️ I couldn't send you a verification DM. Please open your Privacy Settings and try again.`,
+              ephemeral: true,
+            });
+          } catch (followUpErr) {
+            console.error('[verify command] Failed to send DM failure notification:', followUpErr.message);
+          }
+        }
       } else {
         await interaction.reply({
           content: `❌ Verification failed: ${result.message}`,

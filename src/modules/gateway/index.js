@@ -35,6 +35,18 @@ export default function GatewayModule(client) {
           } else if (result.success) {
             const embed = createEmbed(config, '✅ Verification successful! Welcome to the server.');
             await interaction.reply({ embeds: [embed], ephemeral: false });
+            
+            // If DM failed, send ephemeral notification
+            if (result.dmFailed) {
+              try {
+                await interaction.followUp({
+                  content: `⚠️ I couldn't send you a verification DM. Please open your Privacy Settings and try again.`,
+                  ephemeral: true,
+                });
+              } catch (followUpErr) {
+                console.error('[Gateway] Failed to send DM failure notification:', followUpErr.message);
+              }
+            }
           } else {
             await interaction.reply({ content: `❌ ${result.message}`, ephemeral: true });
           }
@@ -62,13 +74,19 @@ export default function GatewayModule(client) {
           return;
         }
 
+        // STRICT CHANNEL RESTRICTION: Only respond to trigger words in the designated verification channel
+        if (message.channelId !== config.channelId) {
+          console.log(`[Gateway] Message in wrong channel: ${message.channelId} (expected ${config.channelId}), ignoring`);
+          return;
+        }
+
         // Handle trigger word method
         if (config.method === 'trigger') {
           // Case-insensitive, trimmed content
           const content = (message.content || '').toString().trim().toLowerCase();
           const triggerWordLower = (config.triggerWord || '').toString().trim().toLowerCase();
           
-          console.log(`[Gateway] Checking trigger: content="${content}" vs trigger="${triggerWordLower}"`);
+          console.log(`[Gateway] Checking trigger in correct channel: content="${content}" vs trigger="${triggerWordLower}"`);
           
           if (!content) {
             console.log('[Gateway] Empty message content, skipping');
@@ -76,8 +94,8 @@ export default function GatewayModule(client) {
           }
 
           if (checkTriggerWord(content, triggerWordLower)) {
-            console.log(`[Gateway] Trigger word matched for ${message.author.tag}`);
-            // React with trigger emoji first
+            console.log(`[Gateway] Trigger word matched for ${message.author.tag} in verification channel`);
+            // React with trigger emoji first (public response in verification channel)
             try {
               const emoji = config.triggerEmoji || '✅';
               await message.react(emoji).catch(() => {});
@@ -90,6 +108,17 @@ export default function GatewayModule(client) {
             
             if (result.alreadyVerified || result.success) {
               console.log(`[Gateway] User ${message.member.user.tag} verified via trigger word`);
+              // If DM failed, send public ephemeral message
+              if (result.dmFailed) {
+                try {
+                  await message.reply({
+                    content: `❌ ${message.member.user.toString()}, I couldn't send you a DM. Please open your Privacy Settings and try again or use /verify.`,
+                    ephemeral: true,
+                  });
+                } catch (replyErr) {
+                  console.error('[Gateway] Failed to send DM failure notification:', replyErr.message);
+                }
+              }
             } else {
               console.log(`[Gateway] Verification failed for ${message.author.tag}: ${result.message}`);
             }

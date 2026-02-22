@@ -65,14 +65,16 @@ export default function GatewayModule(client) {
 
         // Handle trigger word method
         if (config.method === 'trigger') {
-          // Ignore empty messages
-          const content = (message.content || '').toString();
+          // Ignore empty messages and trim content for case-insensitive comparison
+          let content = (message.content || '').toString().trim();
           if (!content) return;
 
+          // Case-insensitive trigger word check
           if (checkTriggerWord(content, config.triggerWord)) {
-            // First react with checkmark emoji
+            // First react with the configured trigger emoji
             try {
-              await message.react('✅').catch(() => {});
+              const emoji = config.triggerEmoji || '✅';
+              await message.react(emoji).catch(() => {});
             } catch (err) {
               console.error('[Gateway] Failed to react to trigger message:', err.message);
             }
@@ -170,7 +172,7 @@ export default function GatewayModule(client) {
      * Command: Setup gateway for a guild
      * Usage in a slash command: /gateway setup <method> <verified_role> <unverified_role> <channel>
      */
-    async setupCommand(guildId, method, verifiedRoleId, unverifiedRoleId, channelId, triggerWord = '', successDM = undefined, embedTitle = undefined, embedDescription = undefined) {
+    async setupCommand(guildId, method, verifiedRoleId, unverifiedRoleId, channelId, triggerWord = '', successDM = undefined, embedTitle = undefined, embedDescription = undefined, slashChannelId = '') {
       try {
         const configData = {
           method,
@@ -185,6 +187,7 @@ export default function GatewayModule(client) {
         if (successDM) configData.successDM = successDM;
         if (embedTitle) configData.embedTitle = embedTitle;
         if (embedDescription) configData.embedDescription = embedDescription;
+        if (slashChannelId) configData.slashChannelId = slashChannelId;
 
         const config = await this.setConfig(guildId, configData);
 

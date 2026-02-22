@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import GatewayConfig from '../../modules/gateway/schema.js';
-import { performVerificationFlow } from '../../modules/gateway/actions.js';
+import { performVerificationFlow, createVerificationEmbed } from '../../modules/gateway/actions.js';
 import { performVerificationCheck } from '../../modules/gateway/checker.js';
 
 export default {
@@ -27,6 +27,17 @@ export default {
         return;
       }
 
+      // Check if user is in the correct channel for /verify
+      if (config.slashChannelId && interaction.channelId !== config.slashChannelId) {
+        const slashChannel = guild.channels.cache.get(config.slashChannelId);
+        const channelMention = slashChannel ? `<#${config.slashChannelId}>` : '#unknown-channel';
+        await interaction.reply({
+          content: `❌ Use this command in ${channelMention}`,
+          ephemeral: true,
+        });
+        return;
+      }
+
       // Perform comprehensive verification check first
       const check = performVerificationCheck(member.user, member, config);
 
@@ -42,8 +53,9 @@ export default {
       const flow = await performVerificationFlow(member, null, config);
 
       if (flow.success) {
+        const embed = createVerificationEmbed(config, '✅ Verification successful! Welcome to the server.', true);
         await interaction.reply({
-          content: '✅ Verification successful! Welcome to the server.',
+          embeds: [embed],
           ephemeral: false,
         });
       } else {

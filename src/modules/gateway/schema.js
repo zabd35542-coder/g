@@ -49,6 +49,26 @@ const GatewaySchema = new mongoose.Schema(
       default: 'Click the button below to verify your account and gain access to the server.',
       description: 'Description for the verification embed',
     },
+    embedColor: {
+      type: String,
+      default: '#2ecc71',
+      description: 'Hex color code for verification embeds (default: green)',
+    },
+    embedImage: {
+      type: String,
+      default: '',
+      description: 'URL for banner/thumbnail image in verification embeds',
+    },
+    triggerEmoji: {
+      type: String,
+      default: '✅',
+      description: 'Emoji used when trigger word is matched',
+    },
+    slashChannelId: {
+      type: String,
+      default: '',
+      description: 'Channel where /verify command is allowed (if not set, allowed everywhere)',
+    },
     raidMode: {
       type: Boolean,
       default: false,

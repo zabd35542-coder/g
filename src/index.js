@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Collection } from "discord.js";
+import { Client, GatewayIntentBits, Collection, Partials } from "discord.js";
 import dotenv from "dotenv";
 import { connectDatabase } from "./core/database.js";
 import loadModules from "./loaders/modules.js";
@@ -13,6 +13,12 @@ const client = new Client({
                 GatewayIntentBits.GuildMembers,
                     GatewayIntentBits.GuildMessages,
                         GatewayIntentBits.GuildMessageReactions,
+            GatewayIntentBits.DirectMessages,
+            GatewayIntentBits.DirectMessageReactions,
+      ],
+      partials: [
+            Partials.Channel,
+            Partials.Message,
       ],
 });
 

@@ -1,7 +1,31 @@
 /**
  * Gateway Actions Module
- * Handles role management, DM notifications, and reactions
+ * Handles role management, DM notifications, and styled embed responses
  */
+
+/**
+ * Create a styled embed for verification messages
+ * @param {Object} config - Gateway config from database
+ * @param {string} message - Message content for the embed
+ * @param {boolean} isSuccess - Whether this is a success message
+ * @returns {Object} Embed object
+ */
+export function createVerificationEmbed(config, message, isSuccess = true) {
+  const embedColor = config.embedColor ? parseInt(config.embedColor.replace('#', ''), 16) : 0x2ecc71;
+  
+  const embed = {
+    title: config.embedTitle || '🔐 Server Verification',
+    description: message || config.embedDescription || 'Verification processed.',
+    color: embedColor,
+    footer: { text: 'Guardian Bot v4.0' },
+  };
+
+  if (config.embedImage && config.embedImage.trim()) {
+    embed.image = { url: config.embedImage };
+  }
+
+  return embed;
+}
 
 /**
  * Add verified role and remove unverified role
@@ -50,47 +74,36 @@ export async function grantRoles(member, config) {
 }
 
 /**
- * Send a customized DM to the user
+ * Send a styled DM to the user with robust error handling
  * @param {User} user - Discord user to DM
- * @param {string} message - DM content
- * @param {Object} config - Gateway config (optional for embed details)
+ * @param {Object} config - Gateway config from database
  * @returns {Object} { success: boolean, message: string }
  */
-export async function sendVerificationDM(user, message, config = {}) {
+export async function sendVerificationDM(user, config = {}) {
   try {
-    if (!user || !user.send) {
-      return { success: false, message: 'Cannot DM this user' };
+    if (!user) {
+      return { success: false, message: 'Invalid user object' };
     }
 
-    const fullMessage = message || config.successDM || 'You have been verified! Welcome to the server.';
+    // Create styled embed for DM
+    const dmText = config.successDM || 'You have been verified! Welcome to the server.';
+    const dmEmbed = createVerificationEmbed(config, dmText, true);
 
-    await user.send({
-      content: fullMessage,
-    });
-
-    return { success: true, message: 'DM sent successfully' };
-  } catch (err) {
-    // If DM fails, return a non-fatal error (user might have DMs disabled)
-    const dmFailReason = err.code === 50007 ? 'User has DMs disabled' : err.message;
-    return { success: false, message: `Failed to send DM: ${dmFailReason}` };
-  }
-}
-
-/**
- * React with ✅ to a message (for Trigger method confirmation)
- * @param {Message} message - Discord message to react to
- * @returns {Object} { success: boolean, message: string }
- */
-export async function reactWithCheckmark(message) {
-  try {
-    if (!message || !message.react) {
-      return { success: false, message: 'Invalid message object' };
+    // Send DM with robust error handling
+    try {
+      await user.send({
+        embeds: [dmEmbed],
+      });
+      return { success: true, message: 'DM sent successfully' };
+    } catch (dmErr) {
+      // Graceful handling of DM failures
+      if (dmErr.code === 50007) {
+        return { success: false, message: 'User has DMs disabled' };
+      }
+      return { success: false, message: `Failed to send DM: ${dmErr.message}` };
     }
-
-    await message.react('✅');
-    return { success: true, message: 'Reacted with ✅' };
   } catch (err) {
-    return { success: false, message: `Failed to react: ${err.message}` };
+    return { success: false, message: `DM error: ${err.message}` };
   }
 }
 
@@ -99,14 +112,13 @@ export async function reactWithCheckmark(message) {
  * @param {GuildMember} member - Member to verify
  * @param {Message|null} triggerMessage - Message that triggered verification (if using trigger method)
  * @param {Object} config - Gateway config
- * @returns {Object} { success: boolean, rolesToast: Object, dmToast: Object, reactionToast: Object }
+ * @returns {Object} { success: boolean, rolesToast: Object, dmToast: Object }
  */
 export async function performVerificationFlow(member, triggerMessage, config) {
   const results = {
     success: true,
     rolesToast: null,
     dmToast: null,
-    reactionToast: null,
   };
 
   // Step 1: Grant/Remove roles
@@ -115,18 +127,10 @@ export async function performVerificationFlow(member, triggerMessage, config) {
     results.success = false;
   }
 
-  // Step 2: Send DM
+  // Step 2: Send styled DM
   if (member.user) {
-    results.dmToast = await sendVerificationDM(member.user, null, config);
+    results.dmToast = await sendVerificationDM(member.user, config);
     // DM failure is non-fatal, so don't set success to false
-  }
-
-  // Step 3: React to trigger message if using trigger method
-  if (config.method === 'trigger' && triggerMessage) {
-    results.reactionToast = await reactWithCheckmark(triggerMessage);
-    if (!results.reactionToast.success) {
-      results.success = false;
-    }
   }
 
   return results;
@@ -144,12 +148,8 @@ export async function sendVerificationPrompt(channel, config) {
       return { success: false, message: 'Invalid channel' };
     }
 
-    const embed = {
-      color: 0x2ecc71,
-      title: config.embedTitle || '🔐 Server Verification',
-      description: config.embedDescription || 'Click the button below to verify your account and gain access to the server.',
-      footer: { text: 'Guardian Bot v4.0' },
-    };
+    const message = config.embedDescription || 'Click the button below to verify your account and gain access to the server.';
+    const embed = createVerificationEmbed(config, message);
 
     const components = [];
 

@@ -67,6 +67,12 @@ export default {
             .setDescription('Description for the verification embed')
             .setRequired(false)
         )
+        .addChannelOption(option =>
+          option
+            .setName('slash_channel')
+            .setDescription('Channel where /verify command is allowed')
+            .setRequired(false)
+        )
     )
     .addSubcommand(subcommand =>
       subcommand
@@ -107,6 +113,7 @@ export default {
         const successDM = options.getString('success_dm') || undefined;
         const embedTitle = options.getString('embed_title') || undefined;
         const embedDescription = options.getString('embed_description') || undefined;
+        const slashChannel = options.getChannel('slash_channel') || undefined;
 
         const result = await client.gateway.setupCommand(
           guild.id,
@@ -117,7 +124,8 @@ export default {
           triggerWord,
           successDM,
           embedTitle,
-          embedDescription
+          embedDescription,
+          slashChannel?.id || ''
         );
 
         if (result.success) {

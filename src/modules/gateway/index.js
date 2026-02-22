@@ -20,9 +20,13 @@ export default function GatewayModule(client) {
     async handleInteraction(interaction) {
       try {
         const config = await GatewayConfig.findOne({ guildId: interaction.guildId });
-        if (!config || !config.enabled) return;
+        if (!config || !config.enabled) {
+          console.log(`[Gateway] Button interaction ignored: config not found or disabled`);
+          return;
+        }
 
         if (interaction.customId === 'gateway_verify_button') {
+          console.log(`[Gateway] Button pressed by ${interaction.user.tag}`);
           const result = await verifyMember(interaction.member, config, 'button');
 
           if (result.alreadyVerified) {
@@ -53,15 +57,26 @@ export default function GatewayModule(client) {
     async handleMessage(message) {
       try {
         const config = await GatewayConfig.findOne({ guildId: message.guildId });
-        if (!config || !config.enabled) return;
+        if (!config || !config.enabled) {
+          console.log(`[Gateway] Message handler: no config or disabled for guild ${message.guildId}`);
+          return;
+        }
 
         // Handle trigger word method
         if (config.method === 'trigger') {
           // Case-insensitive, trimmed content
-          const content = (message.content || '').toString().trim();
-          if (!content) return;
+          const content = (message.content || '').toString().trim().toLowerCase();
+          const triggerWordLower = (config.triggerWord || '').toString().trim().toLowerCase();
+          
+          console.log(`[Gateway] Checking trigger: content="${content}" vs trigger="${triggerWordLower}"`);
+          
+          if (!content) {
+            console.log('[Gateway] Empty message content, skipping');
+            return;
+          }
 
-          if (checkTriggerWord(content, config.triggerWord)) {
+          if (checkTriggerWord(content, triggerWordLower)) {
+            console.log(`[Gateway] Trigger word matched for ${message.author.tag}`);
             // React with trigger emoji first
             try {
               const emoji = config.triggerEmoji || '✅';
@@ -75,7 +90,11 @@ export default function GatewayModule(client) {
             
             if (result.alreadyVerified || result.success) {
               console.log(`[Gateway] User ${message.member.user.tag} verified via trigger word`);
+            } else {
+              console.log(`[Gateway] Verification failed for ${message.author.tag}: ${result.message}`);
             }
+          } else {
+            console.log('[Gateway] Trigger word NOT matched');
           }
         }
       } catch (err) {
@@ -110,13 +129,21 @@ export default function GatewayModule(client) {
           { upsert: true, new: true }
         );
 
+        console.log(`[Gateway] Setup command executed for guild ${guildId}, method: ${method}, channel: ${channelId}`);
+
         // Send verification prompt to the channel
         const guild = client.guilds.cache.get(guildId);
         if (guild) {
           const channel = guild.channels.cache.get(channelId);
           if (channel) {
-            await sendVerificationPrompt(channel, config);
+            console.log(`[Gateway] Sending verification prompt to channel ${channel.name}`);
+            const promptResult = await sendVerificationPrompt(channel, config);
+            console.log(`[Gateway] Prompt result:`, promptResult);
+          } else {
+            console.warn(`[Gateway] Channel ${channelId} not found in guild ${guildId}`);
           }
+        } else {
+          console.warn(`[Gateway] Guild ${guildId} not found in client cache`);
         }
 
         return { success: true, config };

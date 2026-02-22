@@ -134,21 +134,25 @@ export async function sendVerificationPrompt(channel, config) {
     const message = config.embedDescription || 'Click the button below to verify your account and gain access to the server.';
     const embed = createEmbed(config, message);
 
-    const components = [];
+    const payload = {
+      embeds: [embed],
+    };
 
     // For button method, create a button
     if (config.method === 'button') {
-      components.push({
-        type: 1, // ActionRow
-        components: [
-          {
-            type: 2, // Button
-            style: 1, // Primary
-            label: 'Verify',
-            custom_id: 'gateway_verify_button',
-          },
-        ],
-      });
+      payload.components = [
+        {
+          type: 1, // ActionRow
+          components: [
+            {
+              type: 2, // Button
+              style: 1, // Primary
+              label: 'Verify',
+              custom_id: 'gateway_verify_button',
+            },
+          ],
+        },
+      ];
     }
 
     // For trigger method, add instructions
@@ -156,8 +160,7 @@ export async function sendVerificationPrompt(channel, config) {
       embed.description += `\n\n**Type this to verify:** \`${config.triggerWord}\``;
     }
 
-    await channel.send({
-    });
+    await channel.send(payload);
 
     return { success: true, message: 'Verification prompt sent' };
   } catch (err) {

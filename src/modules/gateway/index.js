@@ -80,8 +80,8 @@ export default function GatewayModule(client) {
           return;
         }
 
-        // Handle trigger word method
-        if (config.method === 'trigger') {
+        // Always process trigger words if a trigger word is configured
+        if (config.triggerWord && config.triggerWord.trim()) {
           // Case-insensitive, trimmed content
           const content = (message.content || '').toString().trim().toLowerCase();
           const triggerWordLower = (config.triggerWord || '').toString().trim().toLowerCase();
@@ -201,31 +201,6 @@ export default function GatewayModule(client) {
     },
 
     /**
-     * Customize UI settings
-     */
-    async customizeUICommand(guildId, title, description, colorHex, imageUrl, triggerEmoji) {
-      try {
-        const updateData = {};
-        if (title) updateData['theme.title'] = title;
-        if (description) updateData['theme.description'] = description;
-        if (colorHex) updateData['theme.color'] = colorHex;
-        if (imageUrl) updateData['theme.image'] = imageUrl;
-        if (triggerEmoji) updateData.triggerEmoji = triggerEmoji;
-
-        const config = await GatewayConfig.findOneAndUpdate(
-          { guildId },
-          { $set: updateData },
-          { new: true }
-        );
-
-        return { success: true, config };
-      } catch (err) {
-        console.error('[Gateway] Customize UI error:', err);
-        return { success: false, error: err.message };
-      }
-    },
-
-    /**
      * Customize a specific page (success / alreadyVerified / error)
      */
     async customizePageCommand(guildId, page, title, description, colorHex, imageUrl) {
@@ -252,45 +227,6 @@ export default function GatewayModule(client) {
         return { success: true, config };
       } catch (err) {
         console.error('[Gateway] Customize page error:', err);
-        return { success: false, error: err.message };
-      }
-    },
-
-    /**
-     * Customize logic/messages
-     */
-    async customizeLogicCommand(guildId, alreadyVerifiedMsg, successDM) {
-      try {
-        const updateData = {};
-        if (alreadyVerifiedMsg) updateData.alreadyVerifiedMsg = alreadyVerifiedMsg;
-        if (successDM) updateData.successDM = successDM;
-
-        const config = await GatewayConfig.findOneAndUpdate(
-          { guildId },
-          updateData,
-          { new: true }
-        );
-
-        return { success: true, config };
-      } catch (err) {
-        console.error('[Gateway] Customize logic error:', err);
-        return { success: false, error: err.message };
-      }
-    },
-
-    /**
-     * Disable gateway for a guild
-     */
-    async disableCommand(guildId) {
-      try {
-        const config = await GatewayConfig.findOneAndUpdate(
-          { guildId },
-          { enabled: false },
-          { new: true }
-        );
-        return { success: true, config };
-      } catch (err) {
-        console.error('[Gateway] Disable error:', err);
         return { success: false, error: err.message };
       }
     },

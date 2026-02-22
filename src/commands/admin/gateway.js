@@ -1,30 +1,18 @@
 /**
- * Gateway Admin Command
- * Allows admins to configure the Gateway verification module
+ * Gateway Admin Command - Clean 3-Subcommand Structure
+ * Consolidates setup, UI customization, and status display
  */
 
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('gateway')
-    .setDescription('Configure the gateway verification module')
+    .setDescription('Configure and manage the gateway verification module')
     .addSubcommand(subcommand =>
       subcommand
         .setName('setup')
-        .setDescription('Setup gateway verification for your server')
-        .addStringOption(option =>
-          option
-            .setName('method')
-            .setDescription('Verification method')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Button', value: 'button' },
-              { name: 'Trigger', value: 'trigger' },
-              { name: 'Slash', value: 'slash' },
-              { name: 'Join', value: 'join-check' }
-            )
-        )
+        .setDescription('Setup gateway verification for your server (enables Button + optional Trigger/Slash)')
         .addRoleOption(option =>
           option
             .setName('verified_role')
@@ -46,73 +34,26 @@ export default {
         .addStringOption(option =>
           option
             .setName('trigger_word')
-            .setDescription('Trigger word or password (for trigger method)')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('success_dm')
-            .setDescription('Custom DM message sent on successful verification')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('embed_title')
-            .setDescription('Title for the verification embed')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('embed_description')
-            .setDescription('Description for the verification embed')
+            .setDescription('Trigger word for message-based verification (optional)')
             .setRequired(false)
         )
         .addChannelOption(option =>
           option
             .setName('slash_channel')
-            .setDescription('Channel where /verify command is allowed')
+            .setDescription('Channel where /verify slash command is allowed (optional)')
+            .setRequired(false)
+        )
+        .addStringOption(option =>
+          option
+            .setName('success_dm')
+            .setDescription('Custom DM message on successful verification')
             .setRequired(false)
         )
     )
     .addSubcommand(subcommand =>
       subcommand
         .setName('customize_ui')
-        .setDescription('Customize the visual appearance of verification embeds')
-        .addStringOption(option =>
-          option
-            .setName('title')
-            .setDescription('Embed title')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('description')
-            .setDescription('Embed description')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('color_hex')
-            .setDescription('Hex color code (e.g., #2ecc71)')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('image_url')
-            .setDescription('URL for banner image')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('trigger_emoji')
-            .setDescription('Emoji for trigger method reactions')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('customize_page')
-        .setDescription('Customize a specific verification page (Success / AlreadyVerified / Error)')
+        .setDescription('Customize the visual appearance of specific verification pages')
         .addStringOption(option =>
           option
             .setName('page')
@@ -151,25 +92,8 @@ export default {
     )
     .addSubcommand(subcommand =>
       subcommand
-        .setName('customize_logic')
-        .setDescription('Customize verification messages and behavior')
-        .addStringOption(option =>
-          option
-            .setName('already_verified_msg')
-            .setDescription('Message when user is already verified')
-            .setRequired(false)
-        )
-        .addStringOption(option =>
-          option
-            .setName('success_dm')
-            .setDescription('Success message sent to user DM')
-            .setRequired(false)
-        )
-    )
-    .addSubcommand(subcommand =>
-      subcommand
-        .setName('disable')
-        .setDescription('Disable gateway verification for your server')
+        .setName('status')
+        .setDescription('Display all gateway settings and active verification methods')
     ),
 
   async execute(interaction) {
@@ -197,15 +121,16 @@ export default {
       const subcommand = options.getSubcommand();
 
       if (subcommand === 'setup') {
-        const method = options.getString('method', true);
         const verifiedRole = options.getRole('verified_role', true);
         const unverifiedRole = options.getRole('unverified_role', true);
         const channel = options.getChannel('channel', true);
         const triggerWord = options.getString('trigger_word') || '';
-        const successDM = options.getString('success_dm') || undefined;
-        const embedTitle = options.getString('embed_title') || undefined;
-        const embedDescription = options.getString('embed_description') || undefined;
         const slashChannel = options.getChannel('slash_channel') || undefined;
+        const successDM = options.getString('success_dm') || undefined;
+
+        // Determine method based on configured options
+        // Button is always available; Trigger if word provided; Slash if slashChannel provided
+        const method = 'multi';
 
         const result = await client.gateway.setupCommand(
           guild.id,
@@ -215,14 +140,18 @@ export default {
           channel.id,
           triggerWord,
           successDM,
-          embedTitle,
-          embedDescription,
+          undefined, // embedTitle
+          undefined, // embedDescription
           slashChannel?.id || ''
         );
 
         if (result.success) {
+          const enabledMethods = ['✅ Button (always enabled)'];
+          if (triggerWord) enabledMethods.push(`✅ Trigger (word: \`${triggerWord}\`)`);
+          if (slashChannel) enabledMethods.push(`✅ /verify Slash in <#${slashChannel.id}>`);
+
           await interaction.reply({
-            content: `✅ Gateway configured successfully!\n\n**Method:** ${method}\n**Channel:** <#${channel.id}>\n**Verified Role:** <@&${verifiedRole.id}>\n**Unverified Role:** <@&${unverifiedRole.id}>`,
+            content: `✅ Gateway configured successfully!\n\n**Verification Channel:** <#${channel.id}>\n**Verified Role:** <@&${verifiedRole.id}>\n**Unverified Role:** <@&${unverifiedRole.id}>\n\n**Enabled Methods:**\n${enabledMethods.join('\n')}`,
             ephemeral: true,
           });
         } else {
@@ -232,79 +161,6 @@ export default {
           });
         }
       } else if (subcommand === 'customize_ui') {
-        const title = options.getString('title');
-        const description = options.getString('description');
-        const colorHex = options.getString('color_hex');
-        const imageUrl = options.getString('image_url');
-        const triggerEmoji = options.getString('trigger_emoji');
-
-        const result = await client.gateway.customizeUICommand(
-          guild.id,
-          title,
-          description,
-          colorHex,
-          imageUrl,
-          triggerEmoji
-        );
-
-        if (result.success) {
-          const updates = [];
-          if (title) updates.push(`**Title:** ${title}`);
-          if (description) updates.push(`**Description:** ${description}`);
-          if (colorHex) updates.push(`**Color:** ${colorHex}`);
-          if (imageUrl) updates.push(`**Image:** ${imageUrl}`);
-          if (triggerEmoji) updates.push(`**Trigger Emoji:** ${triggerEmoji}`);
-
-          await interaction.reply({
-            content: `✅ UI customization updated!\n\n${updates.join('\n')}`,
-            ephemeral: true,
-          });
-        } else {
-          await interaction.reply({
-            content: `❌ Customization failed: ${result.error}`,
-            ephemeral: true,
-          });
-        }
-      } else if (subcommand === 'customize_logic') {
-        const alreadyVerifiedMsg = options.getString('already_verified_msg');
-        const successDM = options.getString('success_dm');
-
-        const result = await client.gateway.customizeLogicCommand(
-          guild.id,
-          alreadyVerifiedMsg,
-          successDM
-        );
-
-        if (result.success) {
-          const updates = [];
-          if (alreadyVerifiedMsg) updates.push(`**Already Verified Message:** ${alreadyVerifiedMsg}`);
-          if (successDM) updates.push(`**Success DM:** ${successDM}`);
-
-          await interaction.reply({
-            content: `✅ Logic customization updated!\n\n${updates.join('\n')}`,
-            ephemeral: true,
-          });
-        } else {
-          await interaction.reply({
-            content: `❌ Customization failed: ${result.error}`,
-            ephemeral: true,
-          });
-        }
-      } else if (subcommand === 'disable') {
-        const result = await client.gateway.disableCommand(guild.id);
-        if (result.success) {
-          await interaction.reply({
-            content: '✅ Gateway has been disabled.',
-            ephemeral: true,
-          });
-        } else {
-          await interaction.reply({
-            content: `❌ Disable failed: ${result.error}`,
-            ephemeral: true,
-          });
-        }
-      }
-      else if (subcommand === 'customize_page') {
         const page = options.getString('page', true);
         const title = options.getString('title');
         const description = options.getString('description');
@@ -328,12 +184,52 @@ export default {
           if (imageUrl) updates.push(`**Image:** ${imageUrl}`);
 
           await interaction.reply({
-            content: `✅ Page customization updated for **${page}**!\n\n${updates.join('\n')}`,
+            content: `✅ **${page}** page customization updated!\n\n${updates.join('\n') || 'No changes made.'}`,
             ephemeral: true,
           });
         } else {
-          await interaction.reply({ content: `❌ Update failed: ${result.error}`, ephemeral: true });
+          await interaction.reply({
+            content: `❌ Update failed: ${result.error}`,
+            ephemeral: true,
+          });
         }
+      } else if (subcommand === 'status') {
+        const GatewayConfig = (await import('../../modules/gateway/schema.js')).default;
+        const config = await GatewayConfig.findOne({ guildId: guild.id });
+
+        if (!config || !config.enabled) {
+          await interaction.reply({
+            content: '❌ Gateway is not configured for this server.\n\nUse `/gateway setup` to configure it.',
+            ephemeral: true,
+          });
+          return;
+        }
+
+        // Build status embed
+        const embed = new EmbedBuilder()
+          .setColor(0x5865f2)
+          .setTitle('🔐 Gateway Verification Status')
+          .setDescription('Current configuration and active methods')
+          .addFields(
+            { name: '📍 Verification Channel', value: `<#${config.channelId}>`, inline: false },
+            { name: '✅ Verified Role', value: `<@&${config.verifiedRole}>`, inline: true },
+            { name: '❌ Unverified Role', value: `<@&${config.unverifiedRole}>`, inline: true },
+            { name: '🔄 Active Methods', value: [
+              '✅ **Button** (always active)',
+              config.triggerWord ? `✅ **Trigger** (word: \`${config.triggerWord}\`)` : '⭕ Trigger (disabled)',
+              config.slashChannelId ? `✅ **/verify** Slash (<#${config.slashChannelId}>)` : '⭕ /verify Slash (disabled)'
+            ].join('\n'), inline: false },
+            { name: '🎨 Theme Color', value: config.theme?.color || '#2ecc71', inline: true },
+            { name: '⚡ Trigger Emoji', value: config.triggerEmoji || '✅', inline: true },
+            { name: '🛡️ Raid Shield', value: config.raidMode ? `✅ Active (Min age: ${config.minAccountAge} days)` : '❌ Disabled', inline: false }
+          )
+          .setFooter({ text: 'Use /gateway customize_ui to customize page visuals' })
+          .setTimestamp();
+
+        await interaction.reply({
+          embeds: [embed],
+          ephemeral: true,
+        });
       }
     } catch (err) {
       console.error('[gateway command] Error:', err);

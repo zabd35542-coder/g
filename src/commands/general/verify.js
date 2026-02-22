@@ -23,11 +23,6 @@ export default {
         return;
       }
 
-      if (config.method !== 'slash') {
-        await interaction.reply({ content: 'Slash verification is not enabled for this server.', ephemeral: true });
-        return;
-      }
-
       // Channel visibility check: /verify is PRIVATE elsewhere, PUBLIC only in slashChannelId
       if (config.slashChannelId && interaction.channelId !== config.slashChannelId) {
         const channel = guild.channels.cache.get(config.slashChannelId);

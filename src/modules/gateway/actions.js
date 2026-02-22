@@ -108,7 +108,7 @@ export async function verifyMember(member, config, method) {
     let dmFailed = false;
     try {
       const dmMessage = config.successDM || 'You have been verified! Welcome to the server.';
-      const dmEmbed = createEmbed(config, dmMessage, true);
+      const dmEmbed = createEmbed(config, dmMessage, 'success');
 
       // Prefer sending via user object to avoid member cache issues
       let user = member && member.user ? member.user : null;

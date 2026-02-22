@@ -3,6 +3,8 @@ export default {
   async execute(interaction) {
     try {
       const { client } = interaction;
+      
+      // Handle slash commands
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
@@ -10,15 +12,29 @@ export default {
         return;
       }
 
-      // Route other component interactions to modules if present
-      if (interaction.isButton() || interaction.isSelectMenu()) {
-        // Modules may attach handlers on client (e.g., client.gateway)
-        // We attempt a safe dispatch: prefer specific module APIs if present
-        if (interaction.customId && client.gateway && typeof client.gateway.handleInteraction === 'function') {
+      // Route button interactions to Gateway module
+      if (interaction.isButton()) {
+        if (client.gateway && typeof client.gateway.handleInteraction === 'function') {
           try {
             await client.gateway.handleInteraction(interaction);
+            return;
           } catch (err) {
-            console.error('Module interaction handler error:', err);
+            console.error('[Gateway] Button interaction error:', err);
+            if (interaction.isRepliable() && !interaction.replied) {
+              await interaction.reply({ content: 'An error occurred.', ephemeral: true });
+            }
+          }
+        }
+      }
+
+      // Route select menu interactions to modules if present
+      if (interaction.isSelectMenu()) {
+        if (client.gateway && typeof client.gateway.handleInteraction === 'function') {
+          try {
+            await client.gateway.handleInteraction(interaction);
+            return;
+          } catch (err) {
+            console.error('[Gateway] Select menu interaction error:', err);
             if (interaction.isRepliable() && !interaction.replied) {
               await interaction.reply({ content: 'An error occurred.', ephemeral: true });
             }
@@ -26,7 +42,7 @@ export default {
         }
       }
     } catch (err) {
-      console.error('interactionCreate handler failed:', err);
+      console.error('[interactionCreate] Handler failed:', err);
       try {
         if (interaction && interaction.isRepliable && interaction.isRepliable() && !interaction.replied) {
           await interaction.reply({ content: 'Internal error.', ephemeral: true });

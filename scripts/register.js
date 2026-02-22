@@ -1,16 +1,41 @@
 import { config } from 'dotenv';
 config();
-import { loadCommands } from '../src/loaders/commands.js';
+import { REST } from 'discord.js';
+import loadCommands from '../src/loaders/commands.js';
+
+const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
 
 (async () => {
     try {
-        // Minimal fake client with commands map used by loader
+        const clientId = process.env.CLIENT_ID;
+        const guildId = process.env.GUILD_ID;
+
+        if (!clientId || !guildId) {
+            throw new Error('CLIENT_ID and GUILD_ID are required in environment variables');
+        }
+
+        // Load commands
         const client = { commands: new Map() };
         await loadCommands(client);
-        console.log('Register script finished');
+
+        const commands = Array.from(client.commands.values()).map(cmd => ({
+            name: cmd.name,
+            description: cmd.description || 'No description provided',
+        }));
+
+        console.log(`[REGISTER] Clearing OLD commands for Guild ${guildId}...`);
+        // Delete all existing commands in the guild
+        await rest.put(`/applications/${clientId}/guilds/${guildId}/commands`, { body: [] });
+        console.log('[REGISTER] ✓ Old commands cleared');
+
+        console.log(`[REGISTER] Registering ${commands.length} new command(s)...`);
+        await rest.put(`/applications/${clientId}/guilds/${guildId}/commands`, { body: commands });
+        console.log('[REGISTER] ✓ Commands registered successfully');
+
+        console.log('\n[SUCCESS] Registration completed!');
         process.exit(0);
     } catch (err) {
-        console.error('Register script failed:', err);
+        console.error('[ERROR] Register script failed:', err);
         process.exit(1);
     }
 })();

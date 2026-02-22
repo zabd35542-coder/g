@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import GatewayConfig from '../../modules/gateway/schema.js';
 import { verifyMember, createEmbed } from '../../modules/gateway/actions.js';
+import { validateRaidShield } from '../../modules/gateway/checker.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -27,12 +28,12 @@ export default {
         return;
       }
 
-      // Channel visibility check
+      // Channel visibility check: /verify is PRIVATE elsewhere, PUBLIC only in slashChannelId
       if (config.slashChannelId && interaction.channelId !== config.slashChannelId) {
         const channel = guild.channels.cache.get(config.slashChannelId);
         const channelMention = channel ? `<#${config.slashChannelId}>` : '#unknown-channel';
         await interaction.reply({
-          content: `❌ Use this command in ${channelMention}`,
+          content: `❌ This command is only available in ${channelMention}`,
           ephemeral: true,
         });
         return;

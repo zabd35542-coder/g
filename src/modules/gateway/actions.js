@@ -3,6 +3,8 @@
  * Core verification logic with styled embed responses
  */
 
+import { validateRaidShield, getAccountAgeDays } from './checker.js';
+
 /**
  * Create a styled embed with custom config
  * @param {Object} config - Gateway config from database
@@ -50,6 +52,19 @@ export async function verifyMember(member, config, method) {
       };
     }
 
+    // Step 0: Check Raid Shield (Account Age)
+    if (config.raidMode) {
+      const raidShieldCheck = validateRaidShield(member.user, config);
+      if (!raidShieldCheck.passed) {
+        console.log(`[Gateway] Raid Shield blocked ${member.user.tag}: ${raidShieldCheck.reason}`);
+        return { 
+          success: false, 
+          message: raidShieldCheck.reason,
+          alreadyVerified: false 
+        };
+      }
+    }
+
     // Step 1: Add verified role
     try {
       const verifiedRole = member.guild.roles.cache.get(config.verifiedRole);
@@ -74,18 +89,23 @@ export async function verifyMember(member, config, method) {
       // Non-fatal error
     }
 
-    // Step 3: Send styled DM (robust error handling)
+    // Step 3: Send styled DM with Chic UI (robust error handling)
     try {
       const dmMessage = config.successDM || 'You have been verified! Welcome to the server.';
       const dmEmbed = createEmbed(config, dmMessage, true);
       
-      await member.user.send({
-        embeds: [dmEmbed],
-      });
-    } catch (dmErr) {
-      // Non-fatal: DM failure shouldn't prevent verification
-      const dmReason = dmErr.code === 50007 ? 'User has DMs disabled' : dmErr.message;
-      console.log(`[Gateway] DM failed for ${member.user.tag}: ${dmReason}`);
+      try {
+        await member.user.send({
+          embeds: [dmEmbed],
+        });
+        console.log(`[Gateway] DM sent successfully to ${member.user.tag}`);
+      } catch (dmErr) {
+        // Non-fatal: DM failure shouldn't prevent verification
+        const dmReason = dmErr.code === 50007 ? 'User has DMs disabled' : dmErr.message;
+        console.log(`[Gateway] DM delivery failed for ${member.user.tag}: ${dmReason}`);
+      }
+    } catch (embedErr) {
+      console.error('[Gateway] Failed to create DM embed:', embedErr.message);
     }
 
     return { 

@@ -2,6 +2,10 @@ export default {
   name: 'messageCreate',
   async execute(message) {
     try {
+      // Skip bot messages and messages without content
+      if (message.author.bot) return;
+      if (!message.content) return;
+
       const { client } = message;
 
       // Always forward every message to gateway handler if present

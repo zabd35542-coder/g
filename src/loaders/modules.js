@@ -1,35 +1,29 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default async function loadModules(client) {
-    const modulesPath = path.join(__dirname, '..', 'modules');
-    const moduleFolders = fs.readdirSync(modulesPath);
+      const modulesPath = path.join(__dirname, "../modules");
+        if (!fs.existsSync(modulesPath)) return;
 
-    let loadedCount = 0;
+          const folders = fs
+              .readdirSync(modulesPath)
+                  .filter(f => fs.statSync(path.join(modulesPath, f)).isDirectory());
 
-    for (const folder of moduleFolders) {
+                    const imports = folders.map(folder =>
+                        import(pathToFileURL(path.join(modulesPath, folder, "index.js")).href)
+                          );
 
-        console.log(`[Guardian] Loading module: ${folder}`);
+                            const loadedModules = await Promise.all(imports);
 
-        const moduleFile = path.join(modulesPath, folder, 'index.js');
-        if (!fs.existsSync(moduleFile)) continue;
-
-        try {
-            const moduleExport = await import(pathToFileURL(moduleFile).href);
-            const module = moduleExport.default;
-
-            if (!module?.name || !module?.init) continue;
-
-            await module.init(client);
-            loadedCount++;
-        } catch (error) {
-            console.error(`[Guardian] Error loading module ${folder}:`, error);
-        }
-    }
-
-    console.log(`[Guardian] Loaded ${loadedCount} modules.`);
+                              loadedModules.forEach((mod, index) => {
+                                    const moduleName = folders[index];
+                                        if (typeof mod.default === "function") {
+                                                  client[moduleName] = mod.default(client);
+                                        } else if (typeof mod.default === "object") {
+                                                  client[moduleName] = mod.default;
+                                        }
+                              });
 }

@@ -12,7 +12,7 @@ export default {
     .addSubcommand(subcommand =>
       subcommand
         .setName('setup')
-        .setDescription('Setup gateway verification for your server (enables Button + optional Trigger/Slash)')
+        .setDescription('Setup gateway verification with independent channels for each method')
         .addRoleOption(option =>
           option
             .setName('verified_role')
@@ -27,20 +27,26 @@ export default {
         )
         .addChannelOption(option =>
           option
-            .setName('channel')
-            .setDescription('Channel where verification happens')
+            .setName('button_channel')
+            .setDescription('Channel where verification button is posted')
             .setRequired(true)
         )
-        .addStringOption(option =>
+        .addChannelOption(option =>
           option
-            .setName('trigger_word')
-            .setDescription('Trigger word for message-based verification (optional)')
+            .setName('trigger_channel')
+            .setDescription('Channel where trigger word verification is processed (optional)')
             .setRequired(false)
         )
         .addChannelOption(option =>
           option
             .setName('slash_channel')
             .setDescription('Channel where /verify slash command is allowed (optional)')
+            .setRequired(false)
+        )
+        .addStringOption(option =>
+          option
+            .setName('trigger_word')
+            .setDescription('Trigger word for message-based verification (optional)')
             .setRequired(false)
         )
         .addStringOption(option =>
@@ -92,6 +98,23 @@ export default {
     )
     .addSubcommand(subcommand =>
       subcommand
+        .setName('customize_logic')
+        .setDescription('Customize trigger word and trigger emoji')
+        .addStringOption(option =>
+          option
+            .setName('trigger_word')
+            .setDescription('Word/phrase that triggers verification')
+            .setRequired(true)
+        )
+        .addStringOption(option =>
+          option
+            .setName('trigger_emoji')
+            .setDescription('Emoji to react with when trigger word is matched')
+            .setRequired(false)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand
         .setName('status')
         .setDescription('Display all gateway settings and active verification methods')
     ),
@@ -123,35 +146,31 @@ export default {
       if (subcommand === 'setup') {
         const verifiedRole = options.getRole('verified_role', true);
         const unverifiedRole = options.getRole('unverified_role', true);
-        const channel = options.getChannel('channel', true);
-        const triggerWord = options.getString('trigger_word') || '';
+        const buttonChannel = options.getChannel('button_channel', true);
+        const triggerChannel = options.getChannel('trigger_channel') || undefined;
         const slashChannel = options.getChannel('slash_channel') || undefined;
+        const triggerWord = options.getString('trigger_word') || '';
         const successDM = options.getString('success_dm') || undefined;
-
-        // Determine method based on configured options
-        // Button is always available; Trigger if word provided; Slash if slashChannel provided
-        const method = 'multi';
 
         const result = await client.gateway.setupCommand(
           guild.id,
-          method,
           verifiedRole.id,
           unverifiedRole.id,
-          channel.id,
+          buttonChannel.id,
+          triggerChannel?.id || '',
+          slashChannel?.id || '',
           triggerWord,
-          successDM,
-          undefined, // embedTitle
-          undefined, // embedDescription
-          slashChannel?.id || ''
+          successDM
         );
 
         if (result.success) {
-          const enabledMethods = ['✅ Button (always enabled)'];
-          if (triggerWord) enabledMethods.push(`✅ Trigger (word: \`${triggerWord}\`)`);
-          if (slashChannel) enabledMethods.push(`✅ /verify Slash in <#${slashChannel.id}>`);
+          const enabledMethods = ['✅ Button'];
+          if (triggerChannel) enabledMethods.push(`✅ Trigger (channel: <#${triggerChannel.id}>)`);
+          if (triggerWord) enabledMethods.push(`✅ with word: \`${triggerWord}\``);
+          if (slashChannel) enabledMethods.push(`✅ /verify Slash (channel: <#${slashChannel.id}>)`);
 
           await interaction.reply({
-            content: `✅ Gateway configured successfully!\n\n**Verification Channel:** <#${channel.id}>\n**Verified Role:** <@&${verifiedRole.id}>\n**Unverified Role:** <@&${unverifiedRole.id}>\n\n**Enabled Methods:**\n${enabledMethods.join('\n')}`,
+            content: `✅ Gateway configured successfully!\n\n**Button Channel:** <#${buttonChannel.id}>\n**Verified Role:** <@&${verifiedRole.id}>\n**Unverified Role:** <@&${unverifiedRole.id}>\n\n**Enabled Methods:**\n${enabledMethods.join('\n')}`,
             ephemeral: true,
           });
         } else {
@@ -193,6 +212,31 @@ export default {
             ephemeral: true,
           });
         }
+      } else if (subcommand === 'customize_logic') {
+        const triggerWord = options.getString('trigger_word', true);
+        const triggerEmoji = options.getString('trigger_emoji');
+
+        const result = await client.gateway.customizeLogicCommand(
+          guild.id,
+          triggerWord,
+          triggerEmoji
+        );
+
+        if (result.success) {
+          const updates = [];
+          updates.push(`**Trigger Word:** \`${triggerWord}\``);
+          if (triggerEmoji) updates.push(`**Trigger Emoji:** ${triggerEmoji}`);
+
+          await interaction.reply({
+            content: `✅ Trigger logic customization updated!\n\n${updates.join('\n')}`,
+            ephemeral: true,
+          });
+        } else {
+          await interaction.reply({
+            content: `❌ Update failed: ${result.error}`,
+            ephemeral: true,
+          });
+        }
       } else if (subcommand === 'status') {
         const GatewayConfig = (await import('../../modules/gateway/schema.js')).default;
         const config = await GatewayConfig.findOne({ guildId: guild.id });
@@ -211,19 +255,20 @@ export default {
           .setTitle('🔐 Gateway Verification Status')
           .setDescription('Current configuration and active methods')
           .addFields(
-            { name: '📍 Verification Channel', value: `<#${config.channelId}>`, inline: false },
+            { name: '� Button Channel', value: config.buttonChannelId ? `<#${config.buttonChannelId}>` : 'Not configured', inline: false },
+            { name: '💬 Trigger Channel', value: config.triggerChannelId ? `<#${config.triggerChannelId}>` : 'Not configured', inline: false },
+            { name: '⚡ Slash Channel', value: config.slashChannelId ? `<#${config.slashChannelId}>` : 'Not configured (allowed everywhere)', inline: false },
             { name: '✅ Verified Role', value: `<@&${config.verifiedRole}>`, inline: true },
             { name: '❌ Unverified Role', value: `<@&${config.unverifiedRole}>`, inline: true },
             { name: '🔄 Active Methods', value: [
               '✅ **Button** (always active)',
-              config.triggerWord ? `✅ **Trigger** (word: \`${config.triggerWord}\`)` : '⭕ Trigger (disabled)',
-              config.slashChannelId ? `✅ **/verify** Slash (<#${config.slashChannelId}>)` : '⭕ /verify Slash (disabled)'
+              config.triggerWord ? `✅ **Trigger** (word: \`${config.triggerWord}\`, emoji: ${config.triggerEmoji || '✅'})` : '⭕ Trigger (no word configured)',
+              config.slashChannelId ? `✅ **/verify** Slash (<#${config.slashChannelId}>)` : '✅ **/verify** Slash (allowed everywhere)'
             ].join('\n'), inline: false },
             { name: '🎨 Theme Color', value: config.theme?.color || '#2ecc71', inline: true },
-            { name: '⚡ Trigger Emoji', value: config.triggerEmoji || '✅', inline: true },
             { name: '🛡️ Raid Shield', value: config.raidMode ? `✅ Active (Min age: ${config.minAccountAge} days)` : '❌ Disabled', inline: false }
           )
-          .setFooter({ text: 'Use /gateway customize_ui to customize page visuals' })
+          .setFooter({ text: 'Use /gateway customize_ui for page visuals, /gateway customize_logic for trigger settings' })
           .setTimestamp();
 
         await interaction.reply({

@@ -18,16 +18,21 @@ const GatewaySchema = new mongoose.Schema(
       required: true,
       description: 'Role ID to remove when user is verified (penalty role)',
     },
-    channelId: {
+    buttonChannelId: {
       type: String,
-      required: true,
-      description: 'Channel where verification messages/buttons appear',
+      default: '',
+      description: 'Channel where verification button is posted',
+    },
+    triggerChannelId: {
+      type: String,
+      default: '',
+      description: 'Channel where trigger word verification is processed',
     },
     method: {
       type: String,
-      enum: ['button', 'trigger', 'slash', 'join-check'],
-      default: 'button',
-      description: 'Primary verification method',
+      enum: ['button', 'trigger', 'slash', 'join-check', 'multi'],
+      default: 'multi',
+      description: 'Verification method(s): button, trigger, slash, or multi for all simultaneous',
     },
     triggerWord: {
       type: String,

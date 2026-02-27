@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import loadEvents from './loaders/events.js';
 import loadCommands from './loaders/commands.js';
 import loadModules from './loaders/modules.js';
+import welcomeModule from './modules/welcome/index.js';
 import { connectDatabase } from './core/database.js';
 import { logger } from './core/logger.js';
 
@@ -25,13 +26,16 @@ export async function startBot() {
         logger.info('Step 1: Connecting to database...');
         await connectDatabase();
 
-        logger.info('Step 2: Loading events...');
+        logger.info('Step 2: Initializing Welcome Module...');
+        client.welcome = welcomeModule(client);
+
+        logger.info('Step 3: Loading events...');
         await loadEvents(client);
 
-        logger.info('Step 3: Loading and syncing commands...');
+        logger.info('Step 4: Loading and syncing commands...');
         await loadCommands(client);
 
-        logger.info('Step 4: Loading modules...');
+        logger.info('Step 5: Loading modules...');
         await loadModules(client);
 
         // Initialize security modules

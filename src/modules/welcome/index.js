@@ -24,6 +24,8 @@ export default function WelcomeModule(client) {
         const description = parsePlaceholders(embedConfig.description || '', member, guild);
         const footerText = parsePlaceholders(embedConfig.footer_text || '', member, guild);
         const authorName = parsePlaceholders(embedConfig.author_name || '', member, guild);
+        const authorIcon = embedConfig.author_icon || '';
+        const footerImage = embedConfig.footer_image_url || '';
 
         const embed = {
           title: title || 'Welcome',
@@ -32,9 +34,17 @@ export default function WelcomeModule(client) {
           footer: { text: footerText || 'Welcome' },
         };
 
-        // Add author if author_name is provided
+        // Add author if provided
         if (authorName && authorName.trim()) {
           embed.author = { name: authorName };
+          if (authorIcon && authorIcon.trim()) {
+            embed.author.icon_url = authorIcon;
+          }
+        }
+
+        // Add footer image if provided
+        if (footerImage && footerImage.trim()) {
+          embed.footer.icon_url = footerImage;
         }
 
         // Add thumbnail if user avatar is available and toggle is enabled
@@ -281,7 +291,7 @@ export default function WelcomeModule(client) {
             ],
           };
         } else if (buttonType === 'author') {
-          // Modal 2: Author (Author Name Field)
+          // Modal 2: Author (Author Name & Icon)
           modal = {
             custom_id: `welcome_modal_${embedType}_author`,
             title: `Edit ${embedType === 'welcome' ? 'Welcome' : 'Goodbye'} • Author`,
@@ -301,10 +311,25 @@ export default function WelcomeModule(client) {
                   },
                 ],
               },
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 4,
+                    custom_id: 'author_icon',
+                    label: 'Author Icon URL',
+                    placeholder: 'https://example.com/avatar.png',
+                    style: 1,
+                    value: embConfig?.author_icon || '',
+                    required: false,
+                    max_length: 2000,
+                  },
+                ],
+              },
             ],
           };
         } else if (buttonType === 'footer') {
-          // Modal 3: Footer (Footer Text Only)
+          // Modal 3: Footer (Footer Text & Footer Image URL)
           modal = {
             custom_id: `welcome_modal_${embedType}_footer`,
             title: `Edit ${embedType === 'welcome' ? 'Welcome' : 'Goodbye'} • Footer`,
@@ -321,6 +346,21 @@ export default function WelcomeModule(client) {
                     value: embConfig?.footer_text || '',
                     required: false,
                     max_length: 256,
+                  },
+                ],
+              },
+              {
+                type: 1,
+                components: [
+                  {
+                    type: 4,
+                    custom_id: 'footer_image_url',
+                    label: 'Footer Image URL',
+                    placeholder: 'https://example.com/footer.png',
+                    style: 1,
+                    value: embConfig?.footer_image_url || '',
+                    required: false,
+                    max_length: 2000,
                   },
                 ],
               },
@@ -477,21 +517,56 @@ export default function WelcomeModule(client) {
             successMessage = `${embedType === 'welcome' ? 'Welcome' : 'Goodbye'} • Basic Information updated!`;
 
           } else if (modalType === 'author') {
-            // Modal: Author (Author Name Field)
+            // Modal: Author (Author Name & Icon)
             const authorName = interaction.fields.getTextInputValue('author_name');
+            const authorIcon = interaction.fields.getTextInputValue('author_icon');
 
             if (!authorName || !authorName.trim()) {
               update[`${embedKey}.author_name`] = '';
             } else {
               update[`${embedKey}.author_name`] = authorName;
             }
+
+            if (authorIcon && authorIcon.trim()) {
+              // validate URL
+              try {
+                new URL(authorIcon);
+                update[`${embedKey}.author_icon`] = authorIcon;
+              } catch (urlErr) {
+                try {
+                  await interaction.reply({ content: '❌ Invalid author icon URL.', ephemeral: true });
+                } catch (replyErr) {
+                  console.error('[Welcome] Failed to reply:', replyErr);
+                }
+                return;
+              }
+            } else {
+              update[`${embedKey}.author_icon`] = '';
+            }
+
             successMessage = `${embedType === 'welcome' ? 'Welcome' : 'Goodbye'} • Author updated!`;
 
           } else if (modalType === 'footer') {
-            // Modal: Footer (Footer Text Only)
+            // Modal: Footer (Footer Text & Footer Image)
             const footerText = interaction.fields.getTextInputValue('footer_text');
+            const footerImage = interaction.fields.getTextInputValue('footer_image_url');
 
             update[`${embedKey}.footer_text`] = footerText;
+            if (footerImage && footerImage.trim()) {
+              try {
+                new URL(footerImage);
+                update[`${embedKey}.footer_image_url`] = footerImage;
+              } catch (urlErr) {
+                try {
+                  await interaction.reply({ content: '❌ Invalid footer image URL.', ephemeral: true });
+                } catch (replyErr) {
+                  console.error('[Welcome] Failed to reply:', replyErr);
+                }
+                return;
+              }
+            } else {
+              update[`${embedKey}.footer_image_url`] = '';
+            }
             successMessage = `${embedType === 'welcome' ? 'Welcome' : 'Goodbye'} • Footer updated!`;
 
           } else if (modalType === 'images') {
@@ -595,7 +670,7 @@ export default function WelcomeModule(client) {
 
     /**
      * Setup welcome module - Admin command helper
-     * Configures channel and auto-role assignment
+     * Configures welcome channel and auto-role assignment (unverified)
      */
     async setup(guildId, channelId, autoRoleId) {
       try {
@@ -629,6 +704,42 @@ export default function WelcomeModule(client) {
         }
       } catch (err) {
         console.error('[Welcome] Setup error:', err);
+        return { success: false, error: err.message || 'Unknown error' };
+      }
+    },
+
+    /**
+     * Setup goodbye channel independent of welcome configuration
+     */
+    async setupGoodbye(guildId, channelId) {
+      try {
+        if (!guildId) {
+          return { success: false, error: 'Guild ID is required' };
+        }
+        if (!channelId) {
+          return { success: false, error: 'Channel ID is required' };
+        }
+
+        const update = {
+          guildId,
+          'goodbyeEmbed.channel': channelId || '',
+          enabled: true,
+        };
+
+        try {
+          const cfg = await WelcomeConfig.findOneAndUpdate(
+            { guildId },
+            update,
+            { upsert: true, new: true }
+          );
+          console.log(`[Welcome] ✅ Goodbye setup complete for guild ${guildId}`);
+          return { success: true, config: cfg };
+        } catch (dbErr) {
+          console.error('[Welcome] Database error during goodbye setup:', dbErr);
+          return { success: false, error: `Database error: ${dbErr.message}` };
+        }
+      } catch (err) {
+        console.error('[Welcome] Goodbye setup error:', err);
         return { success: false, error: err.message || 'Unknown error' };
       }
     },

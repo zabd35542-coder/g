@@ -33,6 +33,7 @@ async setupGoodbye(guildId, channelId) { ... }
 ### 3. Full Separation in Logic
 
 * `handleMemberAdd()` uses `config.welcomeEmbed.channel` exclusively.
+* All handlers (`handleMemberAdd`, `handleMemberRemove`, `handleButtonInteraction`, `handleModalSubmit`) now automatically upsert a default configuration when none exists, preventing "module not configured" errors even before the first setup.
 * `handleMemberRemove()` uses `config.goodbyeEmbed.channel` exclusively.
 * Placeholders remain independent and work per embed.
 

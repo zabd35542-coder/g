@@ -80,7 +80,22 @@ export default function WelcomeModule(client) {
      */
     async handleMemberAdd(member) {
       try {
-        const config = await WelcomeConfig.findOne({ guildId: member.guild.id });
+        // retrieve or create configuration automatically so joins never fail
+        let config = await WelcomeConfig.findOne({ guildId: member.guild.id });
+        if (!config) {
+          try {
+            config = await WelcomeConfig.findOneAndUpdate(
+              { guildId: member.guild.id },
+              { guildId: member.guild.id, enabled: true },
+              { upsert: true, new: true }
+            );
+            console.log(`[Welcome] Created default config for guild ${member.guild.id} during member add`);
+          } catch (dbErr) {
+            console.error('[Welcome] Failed to initialize config on member add:', dbErr);
+            // we can't proceed without config, but don't crash
+            return;
+          }
+        }
         
         // Module must be enabled
         if (!config || !config.enabled) {
@@ -148,7 +163,21 @@ export default function WelcomeModule(client) {
      */
     async handleMemberRemove(member) {
       try {
-        const config = await WelcomeConfig.findOne({ guildId: member.guild.id });
+        // ensure there is a config document even on leave events
+        let config = await WelcomeConfig.findOne({ guildId: member.guild.id });
+        if (!config) {
+          try {
+            config = await WelcomeConfig.findOneAndUpdate(
+              { guildId: member.guild.id },
+              { guildId: member.guild.id, enabled: true },
+              { upsert: true, new: true }
+            );
+            console.log(`[Welcome] Created default config for guild ${member.guild.id} during member remove`);
+          } catch (dbErr) {
+            console.error('[Welcome] Failed to initialize config on member remove:', dbErr);
+            return;
+          }
+        }
         
         // Module must be enabled and goodbye embed configured
         if (!config || !config.enabled) {
@@ -202,14 +231,25 @@ export default function WelcomeModule(client) {
       try {
         if (!interaction.customId.startsWith('welcome_')) return;
 
-        const config = await WelcomeConfig.findOne({ guildId: interaction.guild.id });
+        let config = await WelcomeConfig.findOne({ guildId: interaction.guild.id });
         if (!config) {
+          // create default configuration automatically
           try {
-            await interaction.reply({ content: '❌ Welcome module not configured for this server.', ephemeral: true });
-          } catch (replyErr) {
-            console.error('[Welcome] Failed to reply to button:', replyErr);
+            config = await WelcomeConfig.findOneAndUpdate(
+              { guildId: interaction.guild.id },
+              { guildId: interaction.guild.id, enabled: true },
+              { upsert: true, new: true }
+            );
+            console.log(`[Welcome] Created default config for guild ${interaction.guild.id}`);
+          } catch (dbErr) {
+            console.error('[Welcome] Failed to create default config:', dbErr);
+            try {
+              await interaction.reply({ content: '❌ Could not initialize welcome settings.', ephemeral: true });
+            } catch (replyErr) {
+              console.error('[Welcome] Failed to reply:', replyErr);
+            }
+            return;
           }
-          return;
         }
 
         // Parse button ID: welcome_<embedType>_<buttonType>
@@ -479,14 +519,25 @@ export default function WelcomeModule(client) {
         }
 
         // Fetch current config
-        const config = await WelcomeConfig.findOne({ guildId: interaction.guild.id });
+        let config = await WelcomeConfig.findOne({ guildId: interaction.guild.id });
         if (!config) {
+          // create default if missing
           try {
-            await interaction.reply({ content: '❌ Welcome module not configured.', ephemeral: true });
-          } catch (replyErr) {
-            console.error('[Welcome] Failed to reply:', replyErr);
+            config = await WelcomeConfig.findOneAndUpdate(
+              { guildId: interaction.guild.id },
+              { guildId: interaction.guild.id, enabled: true },
+              { upsert: true, new: true }
+            );
+            console.log(`[Welcome] Created default config for guild ${interaction.guild.id}`);
+          } catch (dbErr) {
+            console.error('[Welcome] Failed to create default config:', dbErr);
+            try {
+              await interaction.reply({ content: '❌ Could not initialize welcome settings.', ephemeral: true });
+            } catch (replyErr) {
+              console.error('[Welcome] Failed to reply:', replyErr);
+            }
+            return;
           }
-          return;
         }
 
         // Build update object based on modal type
@@ -624,7 +675,7 @@ export default function WelcomeModule(client) {
           const updated = await WelcomeConfig.findOneAndUpdate(
             { guildId: interaction.guild.id },
             update,
-            { new: true }
+            { new: true, upsert: true }
           );
 
           if (!updated) {

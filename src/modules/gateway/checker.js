@@ -46,7 +46,10 @@ export function getAccountAgeDays(user) {
  */
 export function checkTriggerWord(messageContent, triggerWord) {
   if (!triggerWord || triggerWord.trim() === '') return false;
-  return messageContent.toLowerCase().includes(triggerWord.toLowerCase());
+  const msg = (messageContent || '').toString().trim().toLowerCase();
+  const word = triggerWord.toString().trim().toLowerCase();
+  // require exact match (space-separated or entire message)
+  return msg === word || msg.split(/\s+/).includes(word);
 }
 
 /**

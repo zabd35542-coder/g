@@ -10,6 +10,7 @@
 
 import WelcomeConfig from './schema.js';
 import { parsePlaceholders } from '../../utils/placeholders.js';
+import { parseColor } from '../../utils/parseColor.js';
 
 export default function WelcomeModule(client) {
   return {
@@ -30,7 +31,7 @@ export default function WelcomeModule(client) {
         const embed = {
           title: title || 'Welcome',
           description: description || 'Welcome to the server!',
-          color: parseInt((embedConfig.color || '#4f3ff0').replace('#', ''), 16),
+          color: parseColor(embedConfig.color, '#4f3ff0'),
           footer: { text: footerText || 'Welcome' },
         };
 

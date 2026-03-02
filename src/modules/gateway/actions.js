@@ -6,10 +6,25 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { validateRaidShield, getAccountAgeDays } from './checker.js';
 import { parsePlaceholders } from '../../utils/placeholders.js';
+import { parseColor } from '../../utils/parseColor.js';
 import EmbedEngine from '../../utils/embedEngine.js';
 
 // engine with bounded cache so we don't hold onto forever-growing embed objects
 const embedEngine = new EmbedEngine(100);
+
+/**
+ * Remove cached embeds associated with a particular guildId.  Used after
+ * configuration changes so users immediately see the new UI.
+ */
+export function clearEmbedCache(guildId) {
+  if (!guildId || !embedEngine._cache) return;
+  const prefix = `${guildId}:`;
+  for (const key of embedEngine._cache.keys()) {
+    if (typeof key === 'string' && key.startsWith(prefix)) {
+      embedEngine._cache.delete(key);
+    }
+  }
+}
 
 /**
  * Create a styled embed with custom config
@@ -65,7 +80,7 @@ export async function createEmbed(config, overrideMessage = '', pageKey = '', me
     let title = page.title || defaultTitle;
     let description = overrideMessage || page.desc || defaultDesc;
     const colorHex = page.color || defaultColor;
-    const color = parseInt((colorHex || '#2ecc71').replace('#', ''), 16);
+    const color = parseColor(colorHex, defaultColor);
 
     // placeholder parsing if a member/guild context was provided
     if (member) {
@@ -261,7 +276,7 @@ export async function sendVerificationPrompt(channel, config, method) {
     const embed = {
       title,
       description: desc,
-      color: parseInt((config.promptUI?.color || '#2ecc71').replace('#', ''), 16),
+      color: parseColor(config.promptUI?.color, '#2ecc71'),
       footer: { text: 'Guardian Bot v4.0' },
     };
 

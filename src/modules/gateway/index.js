@@ -5,7 +5,7 @@
 
 import GatewayConfig from './schema.js';
 import { checkTriggerWord } from './checker.js';
-import { verifyMember, sendVerificationPrompt, createEmbed } from './actions.js';
+import { verifyMember, sendVerificationPrompt, createEmbed, clearEmbedCache } from './actions.js';
 
 /**
  * Gateway Module Factory
@@ -239,6 +239,13 @@ export default function GatewayModule(client) {
           { $set: updateData },
           { new: true }
         );
+
+        // invalidate any cached embeds for this guild so changes show immediately
+        try {
+          clearEmbedCache(guildId);
+        } catch (cErr) {
+          console.warn('[Gateway] Failed to clear embed cache:', cErr.message);
+        }
 
         return { success: true, config };
       } catch (err) {

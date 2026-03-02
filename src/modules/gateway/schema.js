@@ -121,16 +121,6 @@ const GatewaySchema = new mongoose.Schema(
     },
 
     // Track explicit verification state for users
-    verifiedUsers: {
-      type: [
-        {
-          userId: { type: String, required: true },
-          verifiedAt: { type: Date, default: Date.now },
-        },
-      ],
-      default: [],
-      description: 'Historical log of users who have passed verification',
-    },
 
     // Core settings
     enabled: {

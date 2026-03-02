@@ -286,7 +286,7 @@ export default {
           if (res1.success) {
             const details = [];
             if (channelOpt) details.push(`Channel → <#${channelOpt.id}>`);
-            if (triggerWord) details.push(`Trigger Word → \\`${triggerWord}\\``);
+            if (triggerWord) details.push(`Trigger Word → \`${triggerWord}\``);
             if (verifiedRole) details.push(`Verified Role → <@&${verifiedRole.id}>`);
             if (unverifiedRole) details.push(`Unverified Role → <@&${unverifiedRole.id}>`);
             replyParts.push(`⚙️ Logic updated: ${details.join(', ')}`);

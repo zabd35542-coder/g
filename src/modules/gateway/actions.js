@@ -5,12 +5,12 @@
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { validateRaidShield, getAccountAgeDays } from './checker.js';
-import { parsePlaceholders } from '../../utils/placeholders.js';
 import { parseColor } from '../../utils/parseColor.js';
-import EmbedEngine from '../../utils/EmbedEngine.js';
+import { render as renderEmbed } from '../../core/embedEngine.js';
+import { BoundedMap } from '../../utils/cache.js';
 
-// engine used for converting JSON configs to embed objects, with built-in cache
-const embedEngine = new EmbedEngine(100);
+// simple in-memory cache for rendered embeds; keyed the same way as before
+const embedCache = new BoundedMap(100);
 
 // simple guard to avoid processing the same user concurrently (e.g. button spam)
 // key includes guild id to ensure conflicts in multiple servers are tracked separately
@@ -21,11 +21,11 @@ const _processingUsers = new Set();
  * configuration changes so users immediately see the new UI.
  */
 export function clearEmbedCache(guildId) {
-  if (!guildId || !embedEngine._cache) return;
+  if (!guildId) return;
   const prefix = `${guildId}:`;
-  for (const key of embedEngine._cache.keys()) {
+  for (const key of embedCache.keys()) {
     if (typeof key === 'string' && key.startsWith(prefix)) {
-      embedEngine._cache.delete(key);
+      embedCache.delete(key);
     }
   }
 }
@@ -44,12 +44,41 @@ export function clearEmbedCache(guildId) {
  * @param {string} pageKey - 'success' | 'alreadyVerified' | 'error' | 'dm' | 'prompt' | undefined
  */
 export async function createEmbed(config, overrideMessage = '', pageKey = '', member = null) {
-  // build a cache key so identical requests don't require reconstruction
-  const gid = config.guildId || config.guild || ''; // may be undefined on some calls
+  const gid = config.guildId || config.guild || '';
   const cacheKey = `${gid}:${pageKey}:${overrideMessage}`;
 
-  // delegate to engine and utilize its caching
-  return embedEngine.cached(cacheKey, () => embedEngine.build(config, overrideMessage, pageKey, member));
+  if (embedCache.has(cacheKey)) {
+    return embedCache.get(cacheKey);
+  }
+
+  // render the JSON template and then store it
+  let template = null;
+  if (config.templates && Array.isArray(config.templates)) {
+    template = config.templates.find((t) => t.name === pageKey);
+  }
+  if (!template) {
+    const map = {
+      success: config.successUI,
+      alreadyVerified: config.alreadyVerifiedUI,
+      error: config.errorUI,
+      dm: config.dmUI,
+      prompt: config.promptUI,
+    };
+    template = map[pageKey] || {};
+  }
+
+  const data = await renderEmbed(template, member);
+  if (overrideMessage) {
+    data.description = overrideMessage;
+  }
+  if (data.color) {
+    try {
+      data.color = parseColor(data.color, '#2ecc71');
+    } catch (_e) {}
+  }
+
+  embedCache.set(cacheKey, data);
+  return data;
 }
 
 /**

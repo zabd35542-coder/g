@@ -11,9 +11,25 @@ class TaskScheduler {
   }
 
   start() {
+    // guard clause: don't start if we've already scheduled an interval
     if (this.interval) return;
-    // run every minute
+
+    // ensure the database connection is healthy before beginning work
+    if (!GatewayConfig.db || GatewayConfig.db.readyState !== 1) {
+      console.warn('[Scheduler] MongoDB not connected; scheduler will not start');
+      return;
+    }
+
+    // run every minute; the callback itself is wrapped in a try/catch so
+    // issues within the loop won't crash the process or spam the console.
     this.interval = setInterval(async () => {
+      if (!GatewayConfig.db || GatewayConfig.db.readyState !== 1) {
+        console.warn('[Scheduler] MongoDB disconnected; stopping scheduler');
+        clearInterval(this.interval);
+        this.interval = null;
+        return;
+      }
+
       try {
         const now = new Date();
         const configs = await GatewayConfig.find({});
@@ -32,17 +48,19 @@ class TaskScheduler {
               }
             }
             if (changed) {
-              // save only if something changed
               try {
                 await cfg.save();
               } catch (e) {
-                console.error('[Scheduler] Failed to save gateway config:', e);
+                // log at debug level, not throw – failure to persist one
+                // config shouldn't flood the console
+                console.warn('[Scheduler] could not save gateway config', e);
               }
             }
           }
         }
       } catch (e) {
-        console.error('[Scheduler] error checking temp roles', e);
+        // swallow and log once; we don't want repetitive noise
+        console.warn('[Scheduler] error checking temp roles (will continue running)', e);
       }
     }, 60 * 1000);
   }

@@ -7,11 +7,27 @@ import loadCommands from "./loaders/commands.js";
 
 dotenv.config();
 
-// environment validation - critical variables must be present before bot starts
-if (!process.env.CLIENT_ID || !process.env.GUILD_ID) {
-  console.error('Error: CLIENT_ID and GUILD_ID must be set in environment variables');
-  process.exit(1);
+// ---------- system validation ------------------------------------------------
+function systemCheck() {
+  const required = [
+    { name: 'CLIENT_ID', env: process.env.CLIENT_ID },
+    { name: 'GUILD_ID', env: process.env.GUILD_ID },
+    { name: 'DISCORD_TOKEN', env: process.env.DISCORD_TOKEN },
+    { name: 'MONGO_URI', env: process.env.MONGO_URI },
+  ];
+
+  const missing = required.filter((r) => !r.env).map((r) => r.name);
+  if (missing.length) {
+    console.error(
+      `[SystemCheck] missing required env vars: ${missing.join(', ')}`
+    );
+    process.exit(1);
+  }
 }
+
+systemCheck();
+
+// -----------------------------------------------------------------------------
 
 // global safety: log unhandled promise rejections
 process.on('unhandledRejection', (reason) => console.error('Unhandled Rejection:', reason));

@@ -4,32 +4,35 @@ import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Recursively list all `.js` files under a directory.  This is a true
+ * deep walker and does not depend on an `index.js` in each folder.
+ */
+async function listJSFiles(root) {
+  const results = [];
+  const entries = await fs.promises.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...(await listJSFiles(full)));
+    } else if (entry.isFile() && full.endsWith('.js')) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
 export default async function loadCommands(client) {
   const commandsPath = path.join(__dirname, '../commands');
   if (!fs.existsSync(commandsPath)) return;
 
-  async function scanDir(dir) {
-    const results = [];
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      const res = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        results.push(...(await scanDir(res)));
-      } else if (entry.isFile() && res.endsWith('.js')) {
-        results.push(res);
-      }
-    }
-    return results;
-  }
-
-  const files = await scanDir(commandsPath);
+  const files = await listJSFiles(commandsPath);
   for (const file of files) {
     try {
-      const cmd = await import(pathToFileURL(file).href);
-      const c = cmd.default;
+      const mod = await import(pathToFileURL(file).href);
+      const c = mod.default;
       if (!c) continue;
-      if (c.data) {
-        if (typeof c.execute !== 'function') continue;
+      if (c.data && typeof c.execute === 'function') {
         client.commands.set(c.data.name, c);
       } else if (c.name && typeof c.execute === 'function') {
         client.commands.set(c.name, c);

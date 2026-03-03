@@ -12,6 +12,9 @@ import EmbedEngine from '../../utils/embedEngine.js';
 // engine with bounded cache so we don't hold onto forever-growing embed objects
 const embedEngine = new EmbedEngine(100);
 
+// simple guard to avoid processing the same user concurrently (e.g. button spam)
+const _processingUsers = new Set();
+
 /**
  * Remove cached embeds associated with a particular guildId.  Used after
  * configuration changes so users immediately see the new UI.
@@ -116,6 +119,12 @@ export async function createEmbed(config, overrideMessage = '', pageKey = '', me
  * @returns {Object} { success: boolean, message: string, alreadyVerified: boolean }
  */
 export async function verifyMember(member, config, method) {
+  // race condition guard: if we're already handling this user, bail out
+  if (member && member.id && _processingUsers.has(member.id)) {
+    return { success: false, message: 'Verification already in progress for this user' };
+  }
+  if (member && member.id) _processingUsers.add(member.id);
+
   try {
     if (!member || !member.user || !member.roles) {
       return { success: false, message: 'Invalid member object' };
@@ -217,6 +226,9 @@ export async function verifyMember(member, config, method) {
     };
   } catch (err) {
     return { success: false, message: `Verification error: ${err.message}` };
+  } finally {
+    // ensure we remove from processing set regardless of outcome
+    if (member && member.id) _processingUsers.delete(member.id);
   }
 }
 

@@ -17,14 +17,14 @@ export default function WelcomeModule(client) {
     /**
      * Build embed from config with placeholder parsing
      */
-    buildEmbed(embedConfig, member, guild) {
+    async buildEmbed(embedConfig, member, guild) {
       try {
         if (!embedConfig) return null;
 
-        const title = parsePlaceholders(embedConfig.title || '', member, guild);
-        const description = parsePlaceholders(embedConfig.description || '', member, guild);
-        const footerText = parsePlaceholders(embedConfig.footer_text || '', member, guild);
-        const authorName = parsePlaceholders(embedConfig.author_name || '', member, guild);
+        const title = await parsePlaceholders(embedConfig.title || '', member, guild);
+        const description = await parsePlaceholders(embedConfig.description || '', member, guild);
+        const footerText = await parsePlaceholders(embedConfig.footer_text || '', member, guild);
+        const authorName = await parsePlaceholders(embedConfig.author_name || '', member, guild);
         const authorIcon = embedConfig.author_icon || '';
         const footerImage = embedConfig.footer_image_url || '';
 
@@ -140,7 +140,7 @@ export default function WelcomeModule(client) {
               return;
             }
 
-            const embed = this.buildEmbed(config.welcomeEmbed, member, guild);
+            const embed = await this.buildEmbed(config.welcomeEmbed, member, guild);
             if (embed) {
               try {
                 await channel.send({ embeds: [embed] });
@@ -205,7 +205,7 @@ export default function WelcomeModule(client) {
             return;
           }
 
-          const embed = this.buildEmbed(config.goodbyeEmbed, member, guild);
+          const embed = await this.buildEmbed(config.goodbyeEmbed, member, guild);
           if (embed) {
             try {
               await channel.send({ embeds: [embed] });

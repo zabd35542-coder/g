@@ -184,7 +184,7 @@ export default function GatewayModule(client) {
 
         const newConfig = await GatewayConfig.findOneAndUpdate(
           { guildId },
-          updateData,
+          { $set: updateData },
           { upsert: true, new: true }
         );
 

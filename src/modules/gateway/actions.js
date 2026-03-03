@@ -13,6 +13,7 @@ import EmbedEngine from '../../utils/embedEngine.js';
 const embedEngine = new EmbedEngine(100);
 
 // simple guard to avoid processing the same user concurrently (e.g. button spam)
+// key includes guild id to ensure conflicts in multiple servers are tracked separately
 const _processingUsers = new Set();
 
 /**
@@ -119,11 +120,14 @@ export async function createEmbed(config, overrideMessage = '', pageKey = '', me
  * @returns {Object} { success: boolean, message: string, alreadyVerified: boolean }
  */
 export async function verifyMember(member, config, method) {
-  // race condition guard: if we're already handling this user, bail out
-  if (member && member.id && _processingUsers.has(member.id)) {
-    return { success: false, message: 'Verification already in progress for this user' };
+  // race condition guard: if we're already handling this user (in this guild), bail out
+  if (member && member.id && member.guild && member.guild.id) {
+    const key = `${member.guild.id}:${member.id}`;
+    if (_processingUsers.has(key)) {
+      return { success: false, message: 'Verification already in progress for this user' };
+    }
+    _processingUsers.add(key);
   }
-  if (member && member.id) _processingUsers.add(member.id);
 
   try {
     if (!member || !member.user || !member.roles) {
@@ -228,7 +232,9 @@ export async function verifyMember(member, config, method) {
     return { success: false, message: `Verification error: ${err.message}` };
   } finally {
     // ensure we remove from processing set regardless of outcome
-    if (member && member.id) _processingUsers.delete(member.id);
+    if (member && member.id && member.guild && member.guild.id) {
+      _processingUsers.delete(`${member.guild.id}:${member.id}`);
+    }
   }
 }
 

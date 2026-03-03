@@ -6,6 +6,7 @@
 import GatewayConfig from './schema.js';
 import { checkTriggerWord } from './checker.js';
 import { verifyMember, sendVerificationPrompt, createEmbed, clearEmbedCache } from './actions.js';
+import { parseColor } from '../../utils/parseColor.js';
 
 /**
  * Gateway Module Factory
@@ -231,7 +232,12 @@ export default function GatewayModule(client) {
 
         if (title !== undefined && title !== null) updateData[`${fieldPrefix}.title`] = title;
         if (description !== undefined && description !== null) updateData[`${fieldPrefix}.desc`] = description;
-        if (colorHex !== undefined && colorHex !== null) updateData[`${fieldPrefix}.color`] = colorHex;
+        if (colorHex !== undefined && colorHex !== null) {
+          // ensure color is a valid hex string using parseColor; store normalized value
+          const parsed = parseColor(colorHex, '#2ecc71');
+          const normalized = `#${parsed.toString(16).padStart(6, '0')}`;
+          updateData[`${fieldPrefix}.color`] = normalized;
+        }
         if (imageUrl !== undefined && imageUrl !== null) updateData[`${fieldPrefix}.image`] = imageUrl;
 
         const config = await GatewayConfig.findOneAndUpdate(

@@ -4,6 +4,10 @@
  */
 
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { createEmbed } from '../../modules/gateway/actions.js';
+
+// track ephemeral preview message IDs keyed by user:guild:page
+const _uiPreviewMap = new Map();
 
 export default {
   data: new SlashCommandBuilder()
@@ -235,6 +239,7 @@ export default {
         const color = options.getString('color');
         const imageUrl = options.getString('image_url');
 
+        // update the database (current implementation writes immediately)
         const result = await client.gateway.customizePageCommand(
           guild.id,
           page,
@@ -244,22 +249,79 @@ export default {
           imageUrl
         );
 
-        if (result.success) {
-          const updates = [];
-          if (title) updates.push(`**Title:** ${title}`);
-          if (description) updates.push(`**Description:** ${description}`);
-          if (color) updates.push(`**Color:** ${color}`);
-          if (imageUrl) updates.push(`**Image:** ${imageUrl}`);
+        // build a preview embed (color safety handled inside createEmbed via parseColor)
 
+        // build a preview embed based on the resulting configuration
+        let previewEmbed;
+        if (result.success && result.config) {
+          try {
+            previewEmbed = await createEmbed(result.config, '', page, interaction.member);
+          } catch (e) {
+            console.error('[gateway command] Failed to build preview embed:', e);
+          }
+        }
+
+        // manage preview message state
+        const key = `${interaction.user.id}:${guild.id}:${page}`;
+        let prevMsgId = _uiPreviewMap.get(key);
+        let edited = false;
+
+        if (prevMsgId && interaction.channel) {
+          try {
+            const prevMsg = await interaction.channel.messages.fetch(prevMsgId).catch(() => null);
+            if (prevMsg) {
+              const contentText = result.success
+                ? `✅ **${page}** customization updated!`
+                : `❌ Update failed: ${result.error}`;
+              const editPayload = { content: contentText };
+              if (previewEmbed) editPayload.embeds = [previewEmbed];
+              await prevMsg.edit(editPayload);
+              edited = true;
+            }
+          } catch (e) {
+            // ignore fetch/edit errors, will send a new reply below
+          }
+        }
+
+        if (!edited) {
+          const replyOptions = previewEmbed ? { embeds: [previewEmbed] } : {};
           await interaction.reply({
-            content: `✅ **${page}** customization updated!\n\n${updates.join('\n') || 'No changes made.'}`,
+            content: result.success ? `✅ **${page}** customization updated!` : `❌ Update failed: ${result.error}`,
+            ...replyOptions,
             ephemeral: true,
           });
-        } else {
-          await interaction.reply({
-            content: `❌ Update failed: ${result.error}`,
-            ephemeral: true,
-          });
+          // fetch the actual message object so we can track its id
+          try {
+            const sentMsg = await interaction.fetchReply();
+            if (sentMsg && sentMsg.id) {
+              _uiPreviewMap.set(key, sentMsg.id);
+            }
+          } catch (e) {
+            // fetch may fail for ephemeral; ignore
+          }
+        }
+
+        // optionally send additional status text if not using preview
+        if (!previewEmbed) {
+          if (result.success) {
+            const updates = [];
+            if (title) updates.push(`**Title:** ${title}`);
+            if (description) updates.push(`**Description:** ${description}`);
+            if (color) updates.push(`**Color:** ${color}`);
+            if (imageUrl) updates.push(`**Image:** ${imageUrl}`);
+
+            if (!edited) {
+              await interaction.followUp({
+                content: updates.join('\n') || 'No changes made.',
+                ephemeral: true,
+              });
+            }
+          } else if (!edited) {
+            await interaction.followUp({
+              content: `❌ Update failed: ${result.error}`,
+              ephemeral: true,
+            });
+          }
         }
       } else if (subcommand === 'customize_logic') {
         const method = options.getString('method', true);

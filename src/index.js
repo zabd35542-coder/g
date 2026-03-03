@@ -7,6 +7,9 @@ import loadCommands from "./loaders/commands.js";
 
 dotenv.config();
 
+// global safety: log unhandled promise rejections
+process.on('unhandledRejection', (reason) => console.error('Unhandled Rejection:', reason));
+
 const client = new Client({
       intents: [
             GatewayIntentBits.Guilds,

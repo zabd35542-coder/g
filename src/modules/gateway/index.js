@@ -55,7 +55,13 @@ export default function GatewayModule(client) {
             await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Digital ID Pass: Member ID Card style
-            const idCardEmbed = await createEmbed(config, `**Member ID Card**\n\n**Join Position:** {join_pos}\n**Status:** ✅ Verified\n\nWelcome to the server!`, 'success', interaction.member);
+            const idCardData = {
+              title: 'Member ID Card',
+              description: `**Join Position:** {join_pos}\n**Status:** ✅ Verified\n**Verified via:** Button\n**Account Age:** {user.created_at}\n\nWelcome to the server!`,
+              thumbnail: { url: '{user.avatar}' },
+              color: '#2ecc71'
+            };
+            const idCardEmbed = await createEmbed(config, '', 'success', interaction.member, idCardData);
             try {
               await interaction.editReply({ embeds: [idCardEmbed] });
             } catch (editErr) {
@@ -141,8 +147,19 @@ export default function GatewayModule(client) {
               
               // Digital ID Pass: Member ID Card style
               const pageKey = result.alreadyVerified ? 'alreadyVerified' : 'success';
-              const msg = result.alreadyVerified ? (result.message || '') : `**Member ID Card**\n\n**Join Position:** {join_pos}\n**Status:** ✅ Verified\n\nWelcome to the server!`;
-              const channelEmbed = await createEmbed(config, msg, pageKey, message.member);
+              let channelEmbed;
+              if (result.success) {
+                const idCardData = {
+                  title: 'Member ID Card',
+                  description: `**Join Position:** {join_pos}\n**Status:** ✅ Verified\n**Verified via:** Trigger\n**Account Age:** {user.created_at}\n\nWelcome to the server!`,
+                  thumbnail: { url: '{user.avatar}' },
+                  color: '#2ecc71'
+                };
+                channelEmbed = await createEmbed(config, '', pageKey, message.member, idCardData);
+              } else {
+                const msg = result.alreadyVerified ? (result.message || '') : '';
+                channelEmbed = await createEmbed(config, msg, pageKey, message.member);
+              }
               // Trigger success is PUBLIC
               await loadingMessage.edit({ embeds: [channelEmbed] });
               

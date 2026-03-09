@@ -26,6 +26,27 @@ export async function parsePlaceholders(text, member) {
     if (member.user) {
       result = result.replace(/{user}/g, `<@${member.id}>`);
       result = result.replace(/{user_name}/g, member.user.username || '');
+      result = result.replace(/{user\.avatar}/g, member.displayAvatarURL({ dynamic: true, size: 256 }) || '');
+      
+      // account age
+      try {
+        const createdAt = member.user.createdAt;
+        const now = new Date();
+        const diffMs = now - createdAt;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffYears = Math.floor(diffDays / 365);
+        const diffMonths = Math.floor((diffDays % 365) / 30);
+        const remainingDays = diffDays % 30;
+        
+        let ageStr = '';
+        if (diffYears > 0) ageStr += `${diffYears} year${diffYears > 1 ? 's' : ''}`;
+        if (diffMonths > 0) ageStr += `${ageStr ? ', ' : ''}${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+        if (remainingDays > 0 && diffYears === 0) ageStr += `${ageStr ? ', ' : ''}${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
+        
+        result = result.replace(/{user\.created_at}/g, ageStr || 'Unknown');
+      } catch (_e) {
+        result = result.replace(/{user\.created_at}/g, 'Unknown');
+      }
     }
 
     // guild-specific tokens

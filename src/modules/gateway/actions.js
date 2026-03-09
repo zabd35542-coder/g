@@ -44,8 +44,10 @@ export function clearEmbedCache(guildId) {
  * @param {Object} config - Gateway config from DB
  * @param {string} overrideMessage - Optional message to use for description
  * @param {string} pageKey - 'success' | 'alreadyVerified' | 'error' | 'dm' | 'prompt' | undefined
+ * @param {GuildMember} member - Member object for placeholders
+ * @param {Object} customData - Optional custom embed data to override template
  */
-export async function createEmbed(config, overrideMessage = '', pageKey = '', member = null) {
+export async function createEmbed(config, overrideMessage = '', pageKey = '', member = null, customData = null) {
   const gid = config.guildId || config.guild || '';
   const cacheKey = `${gid}:${member?.id || ''}:${pageKey}:${overrideMessage}`;
 
@@ -54,19 +56,21 @@ export async function createEmbed(config, overrideMessage = '', pageKey = '', me
   }
 
   // render the JSON template and then store it
-  let template = null;
-  if (config.templates && Array.isArray(config.templates)) {
-    template = config.templates.find((t) => t.name === pageKey);
-  }
+  let template = customData;
   if (!template) {
-    const map = {
-      success: config.successUI,
-      alreadyVerified: config.alreadyVerifiedUI,
-      error: config.errorUI,
-      dm: config.dmUI,
-      prompt: config.promptUI,
-    };
-    template = map[pageKey] || {};
+    if (config.templates && Array.isArray(config.templates)) {
+      template = config.templates.find((t) => t.name === pageKey);
+    }
+    if (!template) {
+      const map = {
+        success: config.successUI,
+        alreadyVerified: config.alreadyVerifiedUI,
+        error: config.errorUI,
+        dm: config.dmUI,
+        prompt: config.promptUI,
+      };
+      template = map[pageKey] || {};
+    }
   }
 
   const data = await renderEmbed(template, member);

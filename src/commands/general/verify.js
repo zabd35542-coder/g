@@ -68,7 +68,13 @@ export default {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Digital ID Pass: Member ID Card style
-        const idCardEmbed = await createEmbed(config, `**Member ID Card**\n\n**Join Position:** {join_pos}\n**Status:** ✅ Verified\n\nWelcome to the server!`, 'success', member);
+        const idCardData = {
+          title: 'Member ID Card',
+          description: `**Join Position:** {join_pos}\n**Status:** ✅ Verified\n**Verified via:** Slash\n**Account Age:** {user.created_at}\n\nWelcome to the server!`,
+          thumbnail: { url: '{user.avatar}' },
+          color: '#2ecc71'
+        };
+        const idCardEmbed = await createEmbed(config, '', 'success', member, idCardData);
         try {
           await interaction.editReply({ embeds: [idCardEmbed] });
         } catch (editErr) {

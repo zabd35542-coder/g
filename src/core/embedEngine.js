@@ -32,7 +32,7 @@ function parse(text, placeholders) {
 
 // دالة عالمية لتصحيح صيغة الألوان
 function resolveColor(color) {
-    if (!color) return 0x2f3136; // لون ديسكورد الافتراضي الأنيق
+    if (!color) return 0x2f3136; // default Discord color
     if (typeof color === 'string' && color.startsWith('#')) {
         return parseInt(color.replace('#', ''), 16);
     }
@@ -65,6 +65,34 @@ export function render(data = {}, placeholders = {}) {
       } catch (_e) {
         ph['join_pos'] = 'Unknown';
       }
+      
+      // user avatar
+      try {
+        ph['user.avatar'] = member.displayAvatarURL({ dynamic: true, size: 256 }) || '';
+      } catch (_e) {
+        ph['user.avatar'] = '';
+      }
+      
+      // account age
+      try {
+        const createdAt = member.user.createdAt;
+        const now = new Date();
+        const diffMs = now - createdAt;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const diffYears = Math.floor(diffDays / 365);
+        const diffMonths = Math.floor((diffDays % 365) / 30);
+        const remainingDays = diffDays % 30;
+        
+        let ageStr = '';
+        if (diffYears > 0) ageStr += `${diffYears} year${diffYears > 1 ? 's' : ''}`;
+        if (diffMonths > 0) ageStr += `${ageStr ? ', ' : ''}${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+        if (remainingDays > 0 && diffYears === 0) ageStr += `${ageStr ? ', ' : ''}${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
+        
+        ph['user.created_at'] = ageStr || 'Unknown';
+      } catch (_e) {
+        ph['user.created_at'] = 'Unknown';
+      }
+    }
     }
   }
 
@@ -107,10 +135,10 @@ export function render(data = {}, placeholders = {}) {
 
   if (data.fields && Array.isArray(data.fields) && data.fields.length > 0) {
     out.fields = data.fields
-      .filter(f => f.name && f.value) // حماية: تجاهل الحقول الناقصة
-      .map((f) => ({
-        name:   parse(f.name,  placeholders),
-        value:  parse(f.value, placeholders),
+      .filter(f => f.name && f.value)
+      .map(f => ({
+        name: parse(f.name, ph),
+        value: parse(f.value, ph),
         inline: !!f.inline,
       }));
   }

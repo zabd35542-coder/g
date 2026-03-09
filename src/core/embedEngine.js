@@ -77,22 +77,12 @@ export function render(data = {}, placeholders = {}) {
       try {
         const createdAt = member.user.createdAt;
         const now = new Date();
-        const diffMs = now - createdAt;
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        const diffYears = Math.floor(diffDays / 365);
-        const diffMonths = Math.floor((diffDays % 365) / 30);
-        const remainingDays = diffDays % 30;
-        
-        let ageStr = '';
-        if (diffYears > 0) ageStr += `${diffYears} year${diffYears > 1 ? 's' : ''}`;
-        if (diffMonths > 0) ageStr += `${ageStr ? ', ' : ''}${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
-        if (remainingDays > 0 && diffYears === 0) ageStr += `${ageStr ? ', ' : ''}${remainingDays} day${remainingDays > 1 ? 's' : ''}`;
-        
-        ph['user.created_at'] = ageStr || 'Unknown';
+        const ageMs = now - createdAt;
+        const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+        ph['user.created_at'] = `${ageDays} days`;
       } catch (_e) {
         ph['user.created_at'] = 'Unknown';
       }
-    }
     }
   }
 
@@ -144,9 +134,9 @@ export function render(data = {}, placeholders = {}) {
   }
 
   // fail-safe: Discord limits embed descriptions to 4096 characters
-  if (out.description && out.description.length > 4096) {
-    return { error: 'EMBED_DESCRIPTION_TOO_LONG' };
-  }
+  // if (out.description && out.description.length > 4096) {
+  //   return { error: 'EMBED_DESCRIPTION_TOO_LONG' };
+  // }
 
   return out;
 }

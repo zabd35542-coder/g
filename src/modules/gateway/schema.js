@@ -75,7 +75,7 @@ const GatewaySchema = new mongoose.Schema(
 
     successUI: {
       title: { type: String, default: '✅ Success' },
-      desc: { type: String, default: 'Verification successful! Welcome to the server.' },
+      desc: { type: String, default: `**✅ Digital ID Pass Issued**\n\n> 👤 **Member:** {user}\n> 🏅 **Join Position:** #{join_pos}\n> 📅 **Account Age:** {account_age} days\n> 📥 **Joined Server:** {joined_at}\n> 🟢 **Status:** Verified` },
       color: { type: String, default: '#2ecc71' },
       image: { type: String, default: '' },
     },

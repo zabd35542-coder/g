@@ -14,6 +14,15 @@ import { parsePlaceholders } from '../../utils/placeholders.js';
 // ── Cache: embeds ثابتة تُخزَّن، embeds ديناميكية (ID Card) لا تُخزَّن أبداً
 const embedCache = new BoundedMap(100);
 
+// default dynamic ID card message used after successful verification
+export const DEFAULT_ID_CARD = `**✅ Digital ID Pass Issued**
+
+> 👤 **Member:** {user}
+> 🏅 **Join Position:** #{join_pos}
+> 📅 **Account Age:** {account_age} days
+> 📥 **Joined Server:** {joined_at}
+> 🟢 **Status:** Verified`;
+
 // ── Guard: يمنع معالجة نفس المستخدم مرتين في نفس الوقت (button spam)
 // المفتاح مركّب guildId:userId لعزل الـ guilds عن بعضها
 const _processingUsers = new Set();
@@ -72,6 +81,16 @@ export async function createEmbed(config, overrideMsg = '', pageKey = '', member
 
   if (data?.error === 'EMBED_DESCRIPTION_TOO_LONG') {
     throw new Error('EMBED_DESCRIPTION_TOO_LONG');
+  }
+
+  // resolve placeholders in the template itself (title/description) when we have a member
+  if (member && data) {
+    if (data.title) {
+      data.title = await parsePlaceholders(data.title, member);
+    }
+    if (data.description) {
+      data.description = await parsePlaceholders(data.description, member);
+    }
   }
 
   // حل الـ placeholders في الـ override message

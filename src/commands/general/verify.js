@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import GatewayConfig from '../../modules/gateway/schema.js';
-import { verifyMember, createEmbed } from '../../modules/gateway/actions.js';
+import { verifyMember, createEmbed, DEFAULT_ID_CARD } from '../../modules/gateway/actions.js';
 
 export default {
   data: new SlashCommandBuilder().setName('verify').setDescription('Run the verification flow.'),
@@ -24,8 +24,7 @@ export default {
         const loadingEmbed = await createEmbed(config, '🔄 Processing...', 'success', member);
         await interaction.reply({ embeds: [loadingEmbed] });
         await new Promise(r => setTimeout(r, 2000));
-        const idCardMsg = `**✅ Verification Complete**\n\n> 👤 **Member:** {user}\n> 🏅 **Join Position:** #{join_pos}\n> 📅 **Account Age:** {account_age} days\n> 🟢 **Status:** Verified`;
-        const idCardEmbed = await createEmbed(config, idCardMsg, 'success', member);
+        const idCardEmbed = await createEmbed(config, DEFAULT_ID_CARD, 'success', member);
         await interaction.editReply({ embeds: [idCardEmbed] });
       } else {
         await interaction.reply({

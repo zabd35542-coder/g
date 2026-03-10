@@ -1,6 +1,6 @@
 import GatewayConfig from './schema.js';
 import { checkTriggerWord } from './checker.js';
-import { verifyMember, createEmbed } from './actions.js';
+import { verifyMember, createEmbed, DEFAULT_ID_CARD } from './actions.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 
 export default function GatewayModule(client) {
@@ -28,8 +28,7 @@ export default function GatewayModule(client) {
           const loadingMsg = await message.channel.send({ embeds: [loadingEmbed] });
           if (message.deletable) await message.delete().catch(() => {});
           await new Promise(r => setTimeout(r, 2000));
-          const idCardMsg = `**✅ Verification Complete**\n\n> 👤 **Member:** {user}\n> 🏅 **Join Position:** #{join_pos}\n> 📅 **Account Age:** {account_age} days\n> 🟢 **Status:** Verified`;
-          const idCardEmbed = await createEmbed(config, idCardMsg, 'success', message.member);
+          const idCardEmbed = await createEmbed(config, DEFAULT_ID_CARD, 'success', message.member);
           await loadingMsg.edit({ embeds: [idCardEmbed] });
           return;
         }
@@ -74,8 +73,7 @@ export default function GatewayModule(client) {
           const loadingEmbed = await createEmbed(config, '🔄 Processing...', 'success', interaction.member);
           await interaction.reply({ embeds: [loadingEmbed] });
           await new Promise(r => setTimeout(r, 2000));
-          const idCardMsg = `**✅ Verification Complete**\n\n> 👤 **Member:** {user}\n> 🏅 **Join Position:** #{join_pos}\n> 📅 **Account Age:** {account_age} days\n> 🟢 **Status:** Verified`;
-          const idCardEmbed = await createEmbed(config, idCardMsg, 'success', interaction.member);
+          const idCardEmbed = await createEmbed(config, DEFAULT_ID_CARD, 'success', interaction.member);
           await interaction.editReply({ embeds: [idCardEmbed] });
           return;
         }

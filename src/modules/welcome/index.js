@@ -1,6 +1,5 @@
 import WelcomeConfig from './schema.js';
-import { parseColor } from '../../utils/parseColor.js';
-import { render as renderEmbed } from '../../core/embedEngine.js';
+import { render } from '../core/embedEngine.js';
 
 export default function WelcomeModule(client) {
   return {
@@ -26,11 +25,7 @@ export default function WelcomeModule(client) {
         }
         if (embedConfig.image_url) template.image = { url: embedConfig.image_url };
 
-        const rendered = renderEmbed(template, member || {});
-        if (rendered?.error === 'EMBED_DESCRIPTION_TOO_LONG') return null;
-        if (rendered && rendered.color) {
-          try { rendered.color = parseColor(rendered.color, '#4f3ff0'); } catch (_e) {}
-        }
+        const rendered = render(template, { member });
         return rendered;
       } catch (err) {
         return null;
@@ -68,8 +63,7 @@ export default function WelcomeModule(client) {
               const channel = channelId ? member.guild.channels.cache.get(channelId) : null;
 
               if (channel?.isTextBased()) {
-                const { render: renderEmbed } = await import('../../core/embedEngine.js');
-                const rendered = renderEmbed(vaultItem.data, { ...member, inviteCode: usedInviteCode });
+                const rendered = render(vaultItem.data, { member, inviteCode: usedInviteCode });
                 await channel.send({ embeds: [rendered] });
                 sentViaVault = true;
               }

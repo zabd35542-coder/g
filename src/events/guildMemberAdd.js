@@ -13,11 +13,19 @@ export default {
     try {
       const { client } = member;
 
+      let usedInviteCode = null;
+      if (client?.inviteTracker && typeof client.inviteTracker.detectUsedInvite === 'function') {
+        usedInviteCode = await client.inviteTracker.detectUsedInvite(member.guild).catch((err) => {
+          console.error('[GuildMemberAdd] inviteTracker detect error:', err);
+          return null;
+        });
+      }
+
       // Forward member join to welcome handler if present
       if (client && client.welcome && typeof client.welcome.handleMemberAdd === 'function') {
         try {
-          console.log(`[GuildMemberAdd] New member: ${member.user.tag}`);
-          await client.welcome.handleMemberAdd(member);
+          console.log(`[GuildMemberAdd] New member: ${member.user.tag} (invite: ${usedInviteCode || 'unknown'})`);
+          await client.welcome.handleMemberAdd(member, usedInviteCode);
         } catch (err) {
           console.error('[Welcome] Member add handler error:', err);
         }

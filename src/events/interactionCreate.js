@@ -32,6 +32,12 @@ export default {
             return;
           }
 
+          // Check if EmbedVault module handles this button
+          if (interaction.customId.startsWith('embedvault_') && client.embedVault && typeof client.embedVault.handleButtonInteraction === 'function') {
+            await client.embedVault.handleButtonInteraction(interaction);
+            return;
+          }
+
           // Check if Gateway module handles this button
           if (client.gateway && typeof client.gateway.handleInteraction === 'function') {
             await client.gateway.handleInteraction(interaction);
@@ -57,6 +63,12 @@ export default {
             await client.welcome.handleModalSubmit(interaction);
             return;
           }
+
+          // Check if EmbedVault module handles this modal
+          if (interaction.customId.startsWith('embedvault_modal:') && client.embedVault && typeof client.embedVault.handleModalSubmit === 'function') {
+            await client.embedVault.handleModalSubmit(interaction);
+            return;
+          }
         } catch (err) {
           console.error('[Modal Interaction] Error:', err);
           try {
@@ -72,6 +84,11 @@ export default {
       // Route select menu interactions
       if (interaction.isSelectMenu()) {
         try {
+          if (interaction.customId.startsWith('embedvault_select') && client.embedVault && typeof client.embedVault.handleSelectMenu === 'function') {
+            await client.embedVault.handleSelectMenu(interaction);
+            return;
+          }
+
           if (client.gateway && typeof client.gateway.handleInteraction === 'function') {
             await client.gateway.handleInteraction(interaction);
             return;

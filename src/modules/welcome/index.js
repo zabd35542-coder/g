@@ -37,7 +37,7 @@ export default function WelcomeModule(client) {
       }
     },
 
-    async handleMemberAdd(member) {
+    async handleMemberAdd(member, usedInviteCode = null) {
       try {
         let config = await WelcomeConfig.findOne({ guildId: member.guild.id });
         if (!config) {
@@ -48,6 +48,45 @@ export default function WelcomeModule(client) {
           );
         }
         if (!config?.enabled) return;
+
+        // Partner logic: check EmbedVault first
+        let sentViaVault = false;
+        if (member.client && member.client.embedVault) {
+          try {
+            const clientVault = member.client.embedVault;
+            let vaultItem = null;
+            if (usedInviteCode) {
+              vaultItem = await clientVault.getByLinkedInvite(member.guild.id, usedInviteCode);
+            }
+
+            if (!vaultItem) {
+              vaultItem = await clientVault.getByCategory(member.guild.id, 'Welcome');
+            }
+
+            if (vaultItem && vaultItem.data) {
+              const channelId = config.welcomeEmbed?.channel;
+              const channel = channelId ? member.guild.channels.cache.get(channelId) : null;
+
+              if (channel?.isTextBased()) {
+                await channel.send({ embeds: [vaultItem.data] });
+                sentViaVault = true;
+              }
+            }
+          } catch (vaultErr) {
+            console.error('[WelcomeModule] EmbedVault send failed:', vaultErr);
+          }
+        }
+
+        if (sentViaVault) {
+          // keep existing autoRole path but skip duplicate welcome message when vault handled welcome embeds
+          if (config.autoRole) {
+            try {
+              const role = member.guild.roles.cache.get(config.autoRole);
+              if (role && !member.roles.cache.has(role.id)) await member.roles.add(role.id);
+            } catch (roleErr) {}
+          }
+          return;
+        }
 
         if (config.autoRole) {
           try {
@@ -63,7 +102,9 @@ export default function WelcomeModule(client) {
             if (embed) await channel.send({ embeds: [embed] });
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error('[WelcomeModule.handleMemberAdd]', err);
+      }
     },
 
     async handleMemberRemove(member) {

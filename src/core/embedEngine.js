@@ -81,10 +81,29 @@ export function render(data = {}, placeholders = {}) {
         const now = new Date();
         const ageMs = now - createdAt;
         const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+        ph['account_age'] = `${ageDays} days`;
         ph['user.created_at'] = `${ageDays} days`;
       } catch (_e) {
+        ph['account_age'] = 'Unknown';
         ph['user.created_at'] = 'Unknown';
       }
+
+      // user mention
+      ph['user.mention'] = member.toString();
+
+      // server name
+      ph['server.name'] = member.guild.name;
+
+      // joined at
+      ph['joined_at'] = member.joinedAt ? member.joinedAt.toLocaleDateString() : 'Unknown';
+
+      // boosts
+      ph['server.boosts'] = member.guild.premiumSubscriptionCount.toString();
+    }
+
+    // invite code if provided
+    if (placeholders.inviteCode) {
+      ph['invite.code'] = placeholders.inviteCode;
     }
   }
 

@@ -135,7 +135,9 @@ export default function EmbedVaultModule(client) {
             return interaction.reply({ content: 'Unable to send from this channel context.', ephemeral: true });
           }
 
-          await channel.send({ embeds: [embedDoc.data] });
+          const { render: renderEmbed } = await import('../core/embedEngine.js');
+          const rendered = renderEmbed(embedDoc.data, interaction.member);
+          await channel.send({ embeds: [rendered] });
           return interaction.reply({ content: `Embed **${name}** sent to channel.`, ephemeral: true });
         }
 
@@ -223,6 +225,9 @@ export default function EmbedVaultModule(client) {
           let parsed;
           try {
             parsed = JSON.parse(jsonText);
+            if (parsed.embeds && Array.isArray(parsed.embeds)) {
+              parsed = parsed.embeds[0];
+            }
           } catch (e) {
             return interaction.reply({ content: 'Invalid JSON format.', ephemeral: true });
           }
@@ -245,8 +250,8 @@ export default function EmbedVaultModule(client) {
 
         const updatedData = {
           ...vaultItem.data,
-          title: title || vaultItem.data.title || undefined,
-          description: description || vaultItem.data.description || undefined,
+          title: title,
+          description: description,
         };
 
         if (imageUrl) {

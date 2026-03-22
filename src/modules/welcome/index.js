@@ -68,7 +68,9 @@ export default function WelcomeModule(client) {
               const channel = channelId ? member.guild.channels.cache.get(channelId) : null;
 
               if (channel?.isTextBased()) {
-                await channel.send({ embeds: [vaultItem.data] });
+                const { render: renderEmbed } = await import('../../core/embedEngine.js');
+                const rendered = renderEmbed(vaultItem.data, { ...member, inviteCode: usedInviteCode });
+                await channel.send({ embeds: [rendered] });
                 sentViaVault = true;
               }
             }

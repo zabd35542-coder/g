@@ -116,7 +116,9 @@ export default {
           return interaction.reply({ content: 'Target channel must be a text channel.', ephemeral: true });
         }
 
-        await channel.send({ embeds: [embedDoc.data] });
+        const { render: renderEmbed } = await import('../../core/embedEngine.js');
+        const rendered = renderEmbed(embedDoc.data, interaction.member);
+        await channel.send({ embeds: [rendered] });
         return interaction.reply({ content: `✅ Sent **${name}** to <#${channel.id}>.`, ephemeral: true });
       }
 

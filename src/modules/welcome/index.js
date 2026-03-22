@@ -1,5 +1,5 @@
 import WelcomeConfig from './schema.js';
-import { render } from '../core/embedEngine.js';
+import { render } from '../../core/embedEngine.js';
 
 export default function WelcomeModule(client) {
   return {

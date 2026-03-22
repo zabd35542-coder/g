@@ -1,6 +1,6 @@
 import EmbedVault from './schema.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder } from 'discord.js';
-import { render, createPreview, validateEmbed } from '../core/embedEngine.js';
+import { render, createPreview, validateEmbed } from '../../core/embedEngine.js';
 
 export default function EmbedVaultModule(client) {
   return {

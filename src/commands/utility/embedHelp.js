@@ -42,6 +42,11 @@ const PLACEHOLDERS = {
     { ph: '{channel.id}',      desc: 'Numeric channel ID' },
     { ph: '{channel.mention}', desc: 'Clickable channel mention  `<#id>`' },
   ],
+  partner: [
+    { ph: '{invite.code}',  desc: 'Invite code used by the member who joined' },
+    { ph: '{invite.uses}',  desc: 'Total number of uses for the invite code' },
+    { ph: '{partner.name}', desc: 'Name of the partner embed' },
+  ],
   special: [
     { ph: '{timestamp}',    desc: 'Current time as a **live** Discord relative timestamp  `<t:unix:R>`' },
     { ph: '{choose:A|B|C}', desc: 'Randomly picks one option — add as many pipe-separated options as you want' },
@@ -63,7 +68,7 @@ function pageFooter(interaction, page, total) {
 
 // ─── Page builders ────────────────────────────────────────────────────────────
 
-const PAGE_COLORS = [0x5865F2, 0xFEE75C, 0x2f3136]; // Blurple, Gold, Dark Grey
+const PAGE_COLORS = [0x5865F2, 0xFEE75C, 0x2f3136, 0xFF6B6B]; // Blurple, Gold, Dark Grey, Red
 
 export function buildPages(interaction) {
   // ── Page 1: Basic Placeholders (User/Server) ───────────────────────────────
@@ -80,7 +85,7 @@ export function buildPages(interaction) {
       { name: '\u200b',    value: '\u200b',                  inline: false },
       { name: '🏠 Server', value: fmt(PLACEHOLDERS.server), inline: false }
     )
-    .setFooter(pageFooter(interaction, 1, 3));
+    .setFooter(pageFooter(interaction, 1, 4));
 
   // ── Page 2: Advanced Data (Join Position, Account Age, Timestamps) ───────
   const p2 = new EmbedBuilder()
@@ -91,7 +96,7 @@ export function buildPages(interaction) {
       { name: '\u200b',    value: '\u200b',                  inline: false },
       { name: '⏰ Timestamps', value: fmt([{ ph: '{timestamp}', desc: 'Current time as a **live** Discord relative timestamp  `<t:unix:R>`' }]), inline: false }
     )
-    .setFooter(pageFooter(interaction, 2, 3));
+    .setFooter(pageFooter(interaction, 2, 4));
 
   // ── Page 3: Dynamic Logic (Random Choice {choose}) ───────────────────────
   const p3 = new EmbedBuilder()
@@ -110,9 +115,24 @@ export function buildPages(interaction) {
         inline: false,
       }
     )
-    .setFooter(pageFooter(interaction, 3, 3));
+    .setFooter(pageFooter(interaction, 3, 4));
 
-  return [p1, p2, p3];
+  // ── Page 4: Partner Invite Variables ──────────────────────────────────────
+  const p4 = new EmbedBuilder()
+    .setColor(PAGE_COLORS[3])
+    .setTitle('🤝 Partner Invite Variables')
+    .setDescription('Special placeholders for partner-tracked embeds triggered by invite codes.\n\u200b')
+    .addFields(
+      { name: '🔗 Partner Data', value: fmt(PLACEHOLDERS.partner), inline: false },
+      {
+        name: '📝 Example',
+        value: '```\n✨ Welcome, {user.name}! ✨\nYou joined via: `{invite.code}`\nThis invite has been used {invite.uses} times!\nPartner: {partner.name}\n```',
+        inline: false,
+      }
+    )
+    .setFooter(pageFooter(interaction, 4, 4));
+
+  return [p1, p2, p3, p4];
 }
 
 // ─── Command ──────────────────────────────────────────────────────────────────

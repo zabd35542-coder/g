@@ -6,6 +6,25 @@ export default {
     .setDescription('Manage embed vault with visual editor')
     .addSubcommand(subcommand =>
       subcommand.setName('manager').setDescription('Open visual embed manager')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('bind')
+        .setDescription('Link an embed to an invite code for partner tracking')
+        .addStringOption(option =>
+          option.setName('name').setDescription('Embed name').setRequired(true)
+        )
+        .addStringOption(option =>
+          option.setName('invite_code').setDescription('Discord invite code').setRequired(true)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('delete')
+        .setDescription('Delete an embed from the vault')
+        .addStringOption(option =>
+          option.setName('name').setDescription('Embed name to delete').setRequired(true)
+        )
     ),
 
   async execute(interaction) {
@@ -21,8 +40,50 @@ export default {
       }
 
       if (sub === 'manager') {
-        // Use the new openManager() flow
         return await client.embedVault.openManager(interaction);
+      }
+
+      if (sub === 'bind') {
+        const name = interaction.options.getString('name').trim();
+        const inviteCode = interaction.options.getString('invite_code').trim();
+
+        // Validate invite code format
+        if (inviteCode.length < 2) {
+          return interaction.reply({
+            content: '❌ Invalid invite code format.',
+            ephemeral: true,
+          });
+        }
+
+        const updated = await client.embedVault.bindInvite(interaction.guildId, name, inviteCode);
+        if (!updated) {
+          return interaction.reply({
+            content: `❌ Embed **${name}** not found in vault.`,
+            ephemeral: true,
+          });
+        }
+
+        return interaction.reply({
+          content: `✅ Bound **${updated.name}** to invite code: \`${inviteCode}\`\nWhen members use this invite to join, this embed will be sent!`,
+          ephemeral: true,
+        });
+      }
+
+      if (sub === 'delete') {
+        const name = interaction.options.getString('name').trim();
+        const deleted = await client.embedVault.delete(interaction.guildId, name);
+
+        if (!deleted) {
+          return interaction.reply({
+            content: `❌ Embed **${name}** not found in vault.`,
+            ephemeral: true,
+          });
+        }
+
+        return interaction.reply({
+          content: `✅ Deleted **${name}** from vault.`,
+          ephemeral: true,
+        });
       }
 
       return interaction.reply({ content: 'Unknown subcommand.', ephemeral: true });

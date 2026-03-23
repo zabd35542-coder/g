@@ -6,7 +6,7 @@ import loadEvents from './loaders/events.js';
 import loadCommands from './loaders/commands.js';
 import TaskScheduler from './core/TaskScheduler.js';
 import { startApi } from './api.js';
-import EmbedVault from '../embedVault/index.js';
+import EmbedVault from './modules/embedVault/index.js';
 
 // 1. تحميل الإعدادات فوراً
 dotenv.config();

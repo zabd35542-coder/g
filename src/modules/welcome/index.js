@@ -50,8 +50,18 @@ export default function WelcomeModule(client) {
           try {
             const clientVault = member.client.embedVault;
             let vaultItem = null;
+            let totalInviteUses = 0;
+            
             if (usedInviteCode) {
               vaultItem = await clientVault.getByLinkedInvite(member.guild.id, usedInviteCode);
+              
+              // Get total uses count for this invite code
+              try {
+                const inviteObj = await member.guild.invites.fetch(usedInviteCode);
+                totalInviteUses = inviteObj?.uses ?? 0;
+              } catch (invErr) {
+                console.warn('[WelcomeModule] Could not fetch invite uses:', invErr.message);
+              }
             }
 
             if (!vaultItem) {
@@ -63,9 +73,30 @@ export default function WelcomeModule(client) {
               const channel = channelId ? member.guild.channels.cache.get(channelId) : null;
 
               if (channel?.isTextBased()) {
-                const rendered = render(vaultItem.data, { member, inviteCode: usedInviteCode });
+                // Pass invite context with code and uses for embedEngine parsing
+                const context = {
+                  member,
+                  'invite.code': usedInviteCode || '',
+                  'invite.uses': totalInviteUses,
+                  'partner.name': vaultItem.name || '',
+                };
+                
+                const rendered = render(vaultItem.data, context);
                 await channel.send({ embeds: [rendered] });
                 sentViaVault = true;
+
+                // Assign partner role if this embed has one linked
+                if (vaultItem.linkedPartnerRole) {
+                  try {
+                    const role = member.guild.roles.cache.get(vaultItem.linkedPartnerRole);
+                    if (role && !member.roles.cache.has(role.id)) {
+                      await member.roles.add(role.id);
+                      console.log(`[WelcomeModule] Assigned partner role to ${member.user.tag}`);
+                    }
+                  } catch (roleErr) {
+                    console.error('[WelcomeModule] Failed to assign partner role:', roleErr);
+                  }
+                }
               }
             }
           } catch (vaultErr) {

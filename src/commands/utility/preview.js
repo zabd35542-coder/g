@@ -1,15 +1,15 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { render } from '../../core/embedEngine.js';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('embed_preview')
     .setDescription('Preview an embed from a raw JSON string.')
-    .addStringOption((option) =>
+    .addStringOption(option =>
       option
         .setName('json')
         .setDescription('The JSON definition of the embed.')
-        .setRequired(true),
+        .setRequired(true)
     ),
 
   async execute(interaction) {
@@ -19,40 +19,25 @@ export default {
 
       try {
         payload = JSON.parse(jsonStr);
-      } catch (parseErr) {
-        return await interaction.reply({
+        // Support Discord message payloads that wrap the embed in an array
+        if (payload.embeds && Array.isArray(payload.embeds)) payload = payload.embeds[0];
+      } catch {
+        return interaction.reply({
           content: '❌ **Invalid JSON:** تأكد من كتابة الكود بصيغة JSON صحيحة.',
           ephemeral: true,
         });
       }
 
-      // إضافة متغيرات أساسية لجعل المعاينة واقعية
-      const placeholders = {
-        user: interaction.user.username,
-        server: interaction.guild.name,
-        avatar: interaction.user.displayAvatarURL(),
-        user_nick: interaction.member?.nickname || interaction.user.username,
-        server_boostcount: interaction.guild?.premiumSubscriptionCount || 0,
-        user_joindate: interaction.member?.joinedAt ? interaction.member.joinedAt.toISOString() : '',
-      };
+      // FIX #4 – pass real member context so ALL placeholders (including avatars) resolve
+      const rendered = render(payload, { member: interaction.member });
 
-      const embed = render(payload, placeholders);
-      
-      if (embed && embed.error === 'EMBED_DESCRIPTION_TOO_LONG') {
-        return await interaction.reply({
-          content: '❌ **Embed description is too long (4096 char limit).**',
-          ephemeral: true,
-        });
-      }
-      
-      await interaction.reply({ 
-        embeds: [embed], 
-        ephemeral: true 
-      });
+      // FIX – render() returns a plain object; discord.js v14 requires an EmbedBuilder instance
+      const embed = new EmbedBuilder(rendered);
 
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (err) {
       console.error('[COMMAND-ERROR] Preview Failed:', err);
-      if (!interaction.replied) {
+      if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({
           content: '⚠️ حدث خطأ أثناء معالجة الإيمبد. تأكد من أن الحقول تتبع معايير ديسكورد.',
           ephemeral: true,

@@ -4,7 +4,8 @@ export default {
     try {
       const { client } = interaction;
 
-      if (interaction.isAutocomplete && interaction.isAutocomplete()) {
+      // ── Autocomplete ────────────────────────────────────────────────────────
+      if (interaction.isAutocomplete?.()) {
         if (interaction.commandName === 'embed' && client.embedVault) {
           const focused = interaction.options.getFocused(true);
           if (focused.name === 'name') {
@@ -16,9 +17,10 @@ export default {
             return interaction.respond(filtered);
           }
         }
+        return;
       }
 
-      // Handle slash commands
+      // ── Slash Commands ──────────────────────────────────────────────────────
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
@@ -37,80 +39,72 @@ export default {
         return;
       }
 
-      // Route button interactions
+      // ── Buttons ─────────────────────────────────────────────────────────────
       if (interaction.isButton()) {
         try {
-          // Check if Welcome module handles this button
-          if (interaction.customId.startsWith('welcome_') && client.welcome && typeof client.welcome.handleButtonInteraction === 'function') {
+          if (interaction.customId.startsWith('welcome_') && client.welcome?.handleButtonInteraction) {
             await client.welcome.handleButtonInteraction(interaction);
             return;
           }
-
-          // Check if EmbedVault module handles this button
-          if (interaction.customId.startsWith('embedvault_') && client.embedVault && typeof client.embedVault.handleButtonInteraction === 'function') {
+          if (interaction.customId.startsWith('embedvault_') && client.embedVault?.handleButtonInteraction) {
             await client.embedVault.handleButtonInteraction(interaction);
             return;
           }
-
-          // Check if Gateway module handles this button
-          if (client.gateway && typeof client.gateway.handleInteraction === 'function') {
+          if (client.gateway?.handleInteraction) {
             await client.gateway.handleInteraction(interaction);
-            return;
           }
         } catch (err) {
           console.error('[Button Interaction] Error:', err);
           try {
-            if (interaction.isRepliable() && !interaction.replied) {
+            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
               await interaction.reply({ content: '❌ An error occurred processing your interaction.', ephemeral: true });
             }
           } catch (replyErr) {
             console.error('[Button] Failed to send error reply:', replyErr);
           }
         }
+        return;
       }
 
-      // Route modal interactions
+      // ── Modal Submissions ────────────────────────────────────────────────────
       if (interaction.isModalSubmit()) {
         try {
-          // Check if Welcome module handles this modal
-          if (interaction.customId.startsWith('welcome_modal_') && client.welcome && typeof client.welcome.handleModalSubmit === 'function') {
+          if (interaction.customId.startsWith('welcome_modal_') && client.welcome?.handleModalSubmit) {
             await client.welcome.handleModalSubmit(interaction);
             return;
           }
-
-          // Check if EmbedVault module handles this modal
-          if (interaction.customId.startsWith('embedvault_') && client.embedVault && typeof client.embedVault.handleModalSubmit === 'function') {
+          if (interaction.customId.startsWith('embedvault_') && client.embedVault?.handleModalSubmit) {
             await client.embedVault.handleModalSubmit(interaction);
             return;
           }
         } catch (err) {
           console.error('[Modal Interaction] Error:', err);
           try {
-            if (interaction.isRepliable() && !interaction.replied) {
+            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
               await interaction.reply({ content: '❌ Failed to process your submission.', ephemeral: true });
             }
           } catch (replyErr) {
             console.error('[Modal] Failed to send error reply:', replyErr);
           }
         }
+        return;
       }
 
-      // Route select menu interactions
-      if (interaction.isSelectMenu()) {
+      // ── Select Menus ─────────────────────────────────────────────────────────
+      // FIX #5 – isSelectMenu() was removed in discord.js v14; use isAnySelectMenu()
+      if (interaction.isAnySelectMenu()) {
         try {
-          if (interaction.customId.startsWith('embedvault_') && client.embedVault && typeof client.embedVault.handleSelectMenu === 'function') {
+          if (interaction.customId.startsWith('embedvault_') && client.embedVault?.handleSelectMenu) {
             await client.embedVault.handleSelectMenu(interaction);
             return;
           }
-
-          if (client.gateway && typeof client.gateway.handleInteraction === 'function') {
+          if (client.gateway?.handleInteraction) {
             await client.gateway.handleInteraction(interaction);
-            return;
           }
         } catch (err) {
           console.error('[Select Menu] Error:', err);
           try {
-            if (interaction.isRepliable() && !interaction.replied) {
+            if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
               await interaction.reply({ content: '❌ An error occurred.', ephemeral: true });
             }
           } catch (replyErr) {
@@ -121,7 +115,7 @@ export default {
     } catch (err) {
       console.error('[interactionCreate] Handler failed:', err);
       try {
-        if (interaction && interaction.isRepliable && interaction.isRepliable() && !interaction.replied) {
+        if (interaction?.isRepliable?.() && !interaction.replied && !interaction.deferred) {
           await interaction.reply({ content: '❌ Internal error.', ephemeral: true });
         }
       } catch (e) {

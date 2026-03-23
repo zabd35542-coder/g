@@ -51,6 +51,25 @@ export default {
     )
     .addSubcommand(subcommand =>
       subcommand
+        .setName('boost')
+        .setDescription('إعداد رسالة تعزيز الخادم • Configure server boost message')
+        .addChannelOption(option =>
+          option
+            .setName('channel')
+            .setDescription('قناة التعزيز • Boost event channel')
+            .setRequired(true)
+            .addChannelTypes(ChannelType.GuildText)
+        )
+        .addStringOption(option =>
+          option
+            .setName('embed_name')
+            .setDescription('اسم الإيمبد • Embed name from vault')
+            .setRequired(true)
+            .setAutocomplete(true)
+        )
+    )
+    .addSubcommand(subcommand =>
+      subcommand
         .setName('logs')
         .setDescription('إعداد قناة السجلات • Configure logs channel')
         .addChannelOption(option =>
@@ -158,6 +177,37 @@ export default {
 
         return interaction.reply({
           content: `✅ **Goodbye Setup Complete!**\n📢 Channel: ${channel}\n🎯 Embed: **${embedName}**`,
+          ephemeral: true,
+        });
+      }
+
+      if (sub === 'boost') {
+        const channel = interaction.options.getChannel('channel');
+        const embedName = interaction.options.getString('embed_name');
+
+        // Verify embed exists
+        if (!interaction.client.embedVault) {
+          return interaction.reply({ content: '❌ EmbedVault module is not loaded.', ephemeral: true });
+        }
+
+        const embed = await interaction.client.embedVault.getByName(interaction.guildId, embedName);
+        if (!embed) {
+          return interaction.reply({ content: `❌ Embed **${embedName}** not found in vault.`, ephemeral: true });
+        }
+
+        const config = await GuildConfig.findOneAndUpdate(
+          { guildId: interaction.guildId },
+          {
+            $set: {
+              'boost.channelId': channel.id,
+              'boost.embedName': embedName,
+            },
+          },
+          { upsert: true, new: true }
+        );
+
+        return interaction.reply({
+          content: `✅ **Boost Setup Complete!**\n📢 Channel: ${channel}\n🎯 Embed: **${embedName}**`,
           ephemeral: true,
         });
       }

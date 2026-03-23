@@ -1,4 +1,5 @@
 import EmbedVault from './schema.js';
+import EmbedManagerModule from './manager.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -55,7 +56,9 @@ function buildEditorRow(embedName) {
 // ─── Module ───────────────────────────────────────────────────────────────────
 
 export default function EmbedVaultModule(client) {
-  return {
+  const manager = EmbedManagerModule(null); // Will be used as namespace for UI operations
+  
+  const vaultMethods = {
     async list(guildId) {
       return EmbedVault.find({ guildId }).sort({ name: 1 }).lean();
     },
@@ -320,23 +323,25 @@ export default function EmbedVaultModule(client) {
         if (!interaction.isButton()) return;
         const { customId } = interaction;
 
+        // Manager Pagination
+        if (customId.startsWith('embedvault_manager_prev:')) {
+          await interaction.deferUpdate();
+          const page = Math.max(0, parseInt(customId.split(':')[1]) - 1);
+          return this.displayManager(interaction, page);
+        }
+
+        if (customId.startsWith('embedvault_manager_next:')) {
+          await interaction.deferUpdate();
+          const page = parseInt(customId.split(':')[1]) + 1;
+          return this.displayManager(interaction, page);
+        }
+
         // Embed Selection (New Premium Button System)
         if (customId.startsWith('embedvault_select:')) {
           const name = customId.split(':')[1];
           const embedDoc = await this.getByName(interaction.guildId, name);
           if (!embedDoc) return interaction.reply({ content: '❌ Embed not found.', ephemeral: true });
           return this.openModularEditor(interaction, embedDoc);
-        }
-
-        // Manager Pagination
-        if (customId.startsWith('embedvault_manager_prev:')) {
-          const page = parseInt(customId.split(':')[1]) - 1;
-          return this.openManager(interaction, Math.max(0, page));
-        }
-
-        if (customId.startsWith('embedvault_manager_next:')) {
-          const page = parseInt(customId.split(':')[1]) + 1;
-          return this.openManager(interaction, page);
         }
 
         // Basic Info
@@ -622,5 +627,31 @@ export default function EmbedVaultModule(client) {
         return interaction.reply({ content: '❌ Failed to generate preview.', ephemeral: true });
       }
     },
+
+    // Manager UI methods (for premium embed selection interface)
+    async displayManager(interaction, page = 0) {
+      return manager.displayManager(interaction, page);
+    },
+
+    async handleSelectEmbed(interaction, embedName) {
+      manager.embedVaultModule = this; // Inject reference for manager
+      return manager.handleSelectEmbed(interaction, embedName);
+    },
+
+    async handlePagination(interaction, direction, currentPage) {
+      manager.embedVaultModule = this; // Inject reference for manager
+      return manager.handlePagination(interaction, direction, currentPage);
+    },
+
+    async openManager(interaction, page = 0) {
+      return this.displayManager(interaction, page);
+    },
+  };
+
+  // Bind vaultMethods' context to manager
+  manager.embedVaultModule = vaultMethods;
+  return {
+    ...vaultMethods,
+    manager,
   };
 }

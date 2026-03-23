@@ -32,6 +32,16 @@ const GuildConfigSchema = new mongoose.Schema(
         default: '',
       },
     },
+    boost: {
+      channelId: {
+        type: String,
+        default: '',
+      },
+      embedName: {
+        type: String,
+        default: '',
+      },
+    },
     logs: {
       channelId: {
         type: String,

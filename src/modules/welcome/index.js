@@ -79,6 +79,13 @@ export default function WelcomeModule(client) {
                   'invite.code': usedInviteCode || '',
                   'invite.uses': totalInviteUses,
                   'partner.name': vaultItem.name || '',
+                  'member': member.user.username,
+                  'member.name': member.user.username,
+                  'member.id': member.id,
+                  'member.mention': `<@${member.id}>`,
+                  'server': member.guild.name,
+                  'server.name': member.guild.name,
+                  'server.id': member.guild.id,
                 };
                 
                 const rendered = render(vaultItem.data, context);
@@ -138,6 +145,42 @@ export default function WelcomeModule(client) {
       try {
         const config = await WelcomeConfig.findOne({ guildId: member.guild.id });
         if (!config?.enabled) return;
+
+        // Check EmbedVault first for Goodbye/Leave embeds
+        if (member.client && member.client.embedVault) {
+          try {
+            const clientVault = member.client.embedVault;
+            const vaultItem = await clientVault.getByType(member.guild.id, 'Goodbye');
+
+            if (vaultItem && vaultItem.data) {
+              const channelId = config.goodbyeEmbed?.channel;
+              const channel = channelId ? member.guild.channels.cache.get(channelId) : null;
+
+              if (channel?.isTextBased()) {
+                // Build context with member and server details for placeholder replacement
+                const context = {
+                  member,
+                  'member': member.user.username,
+                  'server': member.guild.name,
+                  'member.name': member.user.username,
+                  'member.id': member.id,
+                  'member.mention': `<@${member.id}>`,
+                  'server.name': member.guild.name,
+                  'server.id': member.guild.id,
+                };
+
+                const rendered = render(vaultItem.data, context);
+                await channel.send({ embeds: [rendered] });
+                console.log(`[WelcomeModule] Sent goodbye embed for ${member.user.tag}`);
+                return; // Stop here if vault embed was sent successfully
+              }
+            }
+          } catch (vaultErr) {
+            console.error('[WelcomeModule] EmbedVault goodbye send failed:', vaultErr);
+          }
+        }
+
+        // Fallback to legacy method if vault not configured
         if (config.goodbyeEmbed?.channel) {
           const channel = member.guild.channels.cache.get(config.goodbyeEmbed.channel);
           if (channel?.isTextBased()) {
@@ -145,8 +188,10 @@ export default function WelcomeModule(client) {
             if (embed) await channel.send({ embeds: [embed] });
           }
         }
-      } catch (err) {}
-    },
+      } catch (err) {
+        console.error('[WelcomeModule.handleMemberRemove]', err);
+      }
+    }
 
     async handleButtonInteraction(interaction) {
       try {

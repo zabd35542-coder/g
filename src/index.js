@@ -7,6 +7,7 @@ import loadCommands from './loaders/commands.js';
 import TaskScheduler from './core/TaskScheduler.js';
 import { startApi } from './api.js';
 import EmbedVault from './modules/embedVault/index.js';
+import { initializeEmbedHelper } from './utils/embedHelper.js';
 
 // 1. تحميل الإعدادات فوراً
 dotenv.config();
@@ -37,6 +38,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.GuildModeration,
   ],
   partials: [
     Partials.Channel,
@@ -66,6 +68,7 @@ async function bootstrap() {
     // ج. تحميل الأنظمة (Modules & Loaders)
     await loadModules(client);
     client.embedVault = EmbedVault(client);
+    initializeEmbedHelper(client); // Initialize embed helper after vault is ready
     await loadEvents(client);
     await loadCommands(client);
     console.log('[3/4] LOADERS: All systems loaded.');

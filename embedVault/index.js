@@ -9,7 +9,7 @@ import {
   EmbedBuilder,
   StringSelectMenuBuilder,
 } from 'discord.js';
-import { render, createPreview, validateEmbed } from '../../core/embedEngine.js';
+import { render, createPreview, validateEmbed } from '../src/core/embedEngine.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

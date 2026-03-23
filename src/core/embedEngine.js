@@ -167,7 +167,7 @@ function resolvePlaceholders(text, ctx = {}) {
  *   ctx.*        – any extra flat key/value pairs
  *
  * Flat schema fields on the data object (authorName, authorIcon, footerText,
- * footerIcon) take priority over nested author.*/footer.* equivalents so that
+ * footerIcon) take priority over nested author/footer.* equivalents so that
  * the EmbedVault module's storage format is fully supported.
  */
 export function render(data = {}, ctx = {}) {

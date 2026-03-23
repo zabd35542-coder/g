@@ -63,6 +63,12 @@ export default {
             console.error('[Button] Failed to send error reply:', replyErr);
           }
         }
+
+        // Catch-all in case no handler responded for a button interaction
+        if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '❌ Unable to process button interaction at this time.', ephemeral: true });
+        }
+
         return;
       }
 
@@ -87,6 +93,12 @@ export default {
             console.error('[Modal] Failed to send error reply:', replyErr);
           }
         }
+
+        // Catch-all in case no modal handler responded
+        if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '❌ Unable to process modal submission at this time.', ephemeral: true });
+        }
+
         return;
       }
 

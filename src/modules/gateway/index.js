@@ -111,8 +111,6 @@ export default function GatewayModule(client) {
         const config = await GatewayConfig.findOne({ guildId: interaction.guildId });
         if (!config?.enabled) return;
 
-        await interaction.deferReply({ ephemeral: true });
-
         let method = null;
         if (interaction.isButton() || interaction.isAnySelectMenu()) {
           method = 'button';
@@ -121,6 +119,8 @@ export default function GatewayModule(client) {
         } else {
           return; // not relevant
         }
+
+        await interaction.deferReply({ ephemeral: true });
 
         const lockdownResult = await getLockdownResponse(interaction.member, config, method);
         if (lockdownResult) {
@@ -207,7 +207,7 @@ export default function GatewayModule(client) {
         // DM failure handling
         if (result.dmFailed && result.dmErrorCode === 50007) {
           if (interaction.isRepliable()) {
-            await interaction.reply({
+            await interaction.followUp({
               content: "❌ I cannot DM you. Please enable 'Allow Direct Messages' in your privacy settings and try again.",
               ephemeral: true,
             });
@@ -216,7 +216,7 @@ export default function GatewayModule(client) {
         }
 
         const errorEmbed = await createEmbed(config, result.message || 'Verification failed.', 'error', interaction.member);
-        await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+        await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
       } catch (err) {
         console.error('[GatewayModule.handleInteraction] Error:', err);
       }

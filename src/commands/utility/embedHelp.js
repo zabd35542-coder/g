@@ -56,7 +56,7 @@ const PLACEHOLDERS = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(list) {
-  return list.map(({ ph, ar, desc }) => `• \`${ph}\`\n   ▸ ${ar}`).join('\n\n');
+  return list.map(({ ph, ar }) => `\`${ph}\` → ${ar}`).join('\n');
 }
 
 function pageFooter(interaction, page, total) {

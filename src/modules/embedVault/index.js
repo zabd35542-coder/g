@@ -7,7 +7,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
   EmbedBuilder,
-  StringSelectMenuBuilder,
 } from 'discord.js';
 import { render, createPreview, validateEmbed } from '../../core/embedEngine.js';
 
@@ -117,7 +116,7 @@ export default function EmbedVaultModule(client) {
       return doc.save();
     },
 
-    async openManager(interaction) {
+    async openManager(interaction, page = 0) {
       try {
         const embeds = await this.list(interaction.guildId);
 
@@ -136,33 +135,53 @@ export default function EmbedVaultModule(client) {
           });
         }
 
-        const menu = new StringSelectMenuBuilder()
-          .setCustomId('embedvault_select')
-          .setPlaceholder('Select an embed to manage…')
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(
-            embeds.map(item => ({
-              label: item.name.length > 25 ? item.name.substring(0, 22) + '…' : item.name,
-              value: item.name,
-              description: `Type: ${item.type}${item.linkedInviteCode ? ' 🔗' : ''}`,
-            }))
-          );
+        // Premium Button Grid System
+        const buttonsPerPage = 6;
+        const totalPages = Math.ceil(embeds.length / buttonsPerPage);
+        const startIdx = page * buttonsPerPage;
+        const pageEmbeds = embeds.slice(startIdx, startIdx + buttonsPerPage);
 
-        const actionRow = new ActionRowBuilder().addComponents(
+        // Create button grid (3 columns x 2 rows max)
+        const rows = [];
+        for (let i = 0; i < pageEmbeds.length; i += 3) {
+          const rowButtons = pageEmbeds.slice(i, i + 3).map(embed => {
+            const label = embed.name.length > 15 ? embed.name.substring(0, 12) + '…' : embed.name;
+            const icon = embed.linkedInviteCode ? '🔗' : '📦';
+            return new ButtonBuilder()
+              .setCustomId(`embedvault_select:${embed.name}`)
+              .setLabel(`${icon} ${label}`)
+              .setStyle(ButtonStyle.Secondary);
+          });
+          rows.push(new ActionRowBuilder().addComponents(rowButtons));
+        }
+
+        // Add pagination and action buttons
+        const paginationRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`embedvault_manager_prev:${page}`)
+            .setLabel('⬅️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page === 0),
           new ButtonBuilder()
             .setCustomId('embedvault_create')
-            .setLabel('➕ Create New')
+            .setLabel('➕ New')
             .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId('embedvault_import')
-            .setLabel('📥 Import JSON')
+            .setLabel('📥 Import')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(`embedvault_manager_next:${page}`)
+            .setLabel('➡️')
             .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page >= totalPages - 1)
         );
 
+        rows.push(paginationRow);
+
         return interaction.reply({
-          content: `## 📦 Embed Manager\n${embeds.length} embed(s) in vault — select one to edit, or create a new one.`,
-          components: [new ActionRowBuilder().addComponents(menu), actionRow],
+          content: `## 📦 Embed Manager\n✨ ${embeds.length} embed(s) in vault\n\n**Page ${page + 1}/${totalPages}** — Click an embed to manage it.`,
+          components: rows,
           ephemeral: true,
         });
       } catch (err) {
@@ -300,6 +319,25 @@ export default function EmbedVaultModule(client) {
       try {
         if (!interaction.isButton()) return;
         const { customId } = interaction;
+
+        // Embed Selection (New Premium Button System)
+        if (customId.startsWith('embedvault_select:')) {
+          const name = customId.split(':')[1];
+          const embedDoc = await this.getByName(interaction.guildId, name);
+          if (!embedDoc) return interaction.reply({ content: '❌ Embed not found.', ephemeral: true });
+          return this.openModularEditor(interaction, embedDoc);
+        }
+
+        // Manager Pagination
+        if (customId.startsWith('embedvault_manager_prev:')) {
+          const page = parseInt(customId.split(':')[1]) - 1;
+          return this.openManager(interaction, Math.max(0, page));
+        }
+
+        if (customId.startsWith('embedvault_manager_next:')) {
+          const page = parseInt(customId.split(':')[1]) + 1;
+          return this.openManager(interaction, page);
+        }
 
         // Basic Info
         if (customId.startsWith('embedvault_basicinfo:')) {

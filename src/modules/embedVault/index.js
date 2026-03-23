@@ -24,33 +24,40 @@ function buildFullData(doc) {
   };
 }
 
-function buildEditorRow(embedName) {
-  return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`embedvault_basicinfo:${embedName}`)
-      .setLabel('✏️ معلومات أساسية')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(`embedvault_authorfooter:${embedName}`)
-      .setLabel('👤 المؤلف/التذييل')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(`embedvault_images:${embedName}`)
-      .setLabel('🖼️ الصور')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(`embedvault_preview_modal:${embedName}`)
-      .setLabel('👁️ معاينة')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId(`embedvault_send:${embedName}`)
-      .setLabel('📤 إرسال')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(`embedvault_delete:${embedName}`)
-      .setLabel('🗑️ حذف')
-      .setStyle(ButtonStyle.Danger),
-  );
+// Build compliant component rows (max 5 buttons per row, max 5 rows per message)
+function buildEditorRows(embedName) {
+  return [
+    // Row 1: Edit operations (Title/Description/Color, Author/Footer, Images)
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`embedvault_basicinfo:${embedName}`)
+        .setLabel('✏️ معلومات')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`embedvault_authorfooter:${embedName}`)
+        .setLabel('👤 مؤلف/تذييل')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`embedvault_images:${embedName}`)
+        .setLabel('🖼️ صور')
+        .setStyle(ButtonStyle.Primary),
+    ),
+    // Row 2: Actions (Preview, Send, Delete)
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`embedvault_preview_modal:${embedName}`)
+        .setLabel('👁️ معاينة')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`embedvault_send:${embedName}`)
+        .setLabel('📤 إرسال')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`embedvault_delete:${embedName}`)
+        .setLabel('🗑️ حذف')
+        .setStyle(ButtonStyle.Danger),
+    ),
+  ];
 }
 
 // ─── Module ───────────────────────────────────────────────────────────────────
@@ -129,22 +136,22 @@ export default function EmbedVaultModule(client) {
         const isEdit = !!embedDoc;
 
         const content = isEdit
-          ? `## ✏️ جاري التعديل: **${embedDoc.name}**\nانقر على قسم لتعديله. سيتم حفظ التغييرات فوراً.`
+          ? `## ✏️ جاري التعديل: **${embedDoc.name}**\nانقر على قسم لتعديله.`
           : '## ➕ إنشاء إمبد جديد\nملء كل قسم. ابدأ بـ **المعلومات الأساسية**.';
 
-        const components = isEdit ? [buildEditorRow(embedDoc.name)] : [
+        const components = isEdit ? buildEditorRows(embedDoc.name) : [
           new ActionRowBuilder().addComponents(
             new ButtonBuilder()
               .setCustomId('embedvault_basicinfo_create')
-              .setLabel('✏️ معلومات أساسية')
+              .setLabel('✏️ معلومات')
               .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
               .setCustomId('embedvault_authorfooter_create')
-              .setLabel('👤 المؤلف/التذييل')
+              .setLabel('👤 مؤلف/تذييل')
               .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
               .setCustomId('embedvault_images_create')
-              .setLabel('🖼️ الصور')
+              .setLabel('🖼️ صور')
               .setStyle(ButtonStyle.Primary),
           ),
         ];
@@ -152,7 +159,7 @@ export default function EmbedVaultModule(client) {
         if (isEdit) {
           const previewEmbed = createPreview(buildFullData(embedDoc), { member: interaction.member });
           
-          // Check if interaction was deferred - if so, use editReply instead of reply
+          // MUST use editReply if deferred to avoid "Error occurred" message
           if (interaction.deferred) {
             return await interaction.editReply({
               content,
@@ -177,7 +184,7 @@ export default function EmbedVaultModule(client) {
       } catch (err) {
         console.error('[EmbedVaultModule.openModularEditor]', err);
         if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
-          await interaction.reply({ content: '❌ فشل فتح محرر الإمبد المرئي.', ephemeral: true });
+          await interaction.reply({ content: '❌ فشل فتح محرر الإمبد.', ephemeral: true });
         }
       }
     },
@@ -246,9 +253,12 @@ export default function EmbedVaultModule(client) {
     },
 
     async handleSelectMenu(interaction) {
-      try {
+      // CRITICAL: Defer immediately to prevent "Error occurred" message
+      if (interaction.isSelectMenu && !interaction.deferred) {
         await interaction.deferUpdate();
-        
+      }
+      
+      try {
         if (!interaction.isStringSelectMenu()) return;
         if (interaction.customId !== 'embedvault_select') return;
 
@@ -262,7 +272,7 @@ export default function EmbedVaultModule(client) {
           return await interaction.editReply({ content: `❌ لم يتم العثور على الإمبد: **${selectedName}**`, components: [] });
         }
 
-        // Open modular editor - this will use reply which is safe after deferUpdate
+        // Open modular editor - will use editReply due to deferUpdate
         await this.openModularEditor(interaction, embedDoc);
       } catch (err) {
         console.error('[EmbedVaultModule.handleSelectMenu]', err);
@@ -415,9 +425,9 @@ export default function EmbedVaultModule(client) {
           const previewEmbed = createPreview(buildFullData(created), { member: interaction.member });
 
           return interaction.editReply({
-            content: `## ✏️ جاري التعديل: **${created.name}**\n✅ تم الإنشاء! (النوع: ${created.type}) أضف المؤلف/التذييل والصور بعد ذلك.`,
+            content: `## ✏️ جاري التعديل: **${created.name}**\n✅ تم الإنشاء! (النوع: ${created.type}) أضف المؤلف/التذييل والصور.`,
             embeds: [previewEmbed],
-            components: [buildEditorRow(created.name)],
+            components: buildEditorRows(created.name),
           });
         }
 
@@ -483,7 +493,7 @@ export default function EmbedVaultModule(client) {
           return interaction.editReply({
             content: `## ✏️ جاري التعديل: **${updated.name}**\n✅ تم حفظ المعلومات الأساسية! (النوع: ${updated.type})`,
             embeds: [previewEmbed],
-            components: [buildEditorRow(updated.name)],
+            components: buildEditorRows(updated.name),
           });
         }
 
@@ -537,7 +547,7 @@ export default function EmbedVaultModule(client) {
           return interaction.editReply({
             content: `## ✏️ جاري التعديل: **${updated.name}**\n✅ تم حفظ المؤلف/التذييل!`,
             embeds: [previewEmbed],
-            components: [buildEditorRow(updated.name)],
+            components: buildEditorRows(updated.name),
           });
         }
 
@@ -600,7 +610,7 @@ export default function EmbedVaultModule(client) {
           return interaction.editReply({
             content: `## ✏️ جاري التعديل: **${updated.name}**\n✅ تم حفظ الصور!`,
             embeds: [previewEmbed],
-            components: [buildEditorRow(updated.name)],
+            components: buildEditorRows(updated.name),
           });
         }
 
@@ -694,7 +704,7 @@ export default function EmbedVaultModule(client) {
             return interaction.editReply({
               content: `## ✏️ جاري التعديل: **${created.name}**\n✅ تم استيراد الإمبد بنجاح!`,
               embeds: [previewEmbed],
-              components: [buildEditorRow(created.name)],
+              components: buildEditorRows(created.name),
             });
           } catch (err) {
             console.error('[Import Error]', err);

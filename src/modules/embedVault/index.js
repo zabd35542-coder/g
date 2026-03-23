@@ -255,9 +255,15 @@ export default function EmbedVaultModule(client) {
 
     async openBasicInfoModal(interaction, embedDoc = null) {
       const isEdit = !!embedDoc;
+      // Fix #1: Keep modal title under 45 characters
+      const truncatedName = embedDoc?.name ? embedDoc.name.slice(0, 20) : '';
+      const modalTitle = isEdit 
+        ? `تعديل: ${truncatedName}` 
+        : 'إنشاء – معلومات أساسية';
+      
       const modal = new ModalBuilder()
         .setCustomId(isEdit ? `embedvault_basicinfo_submit:${embedDoc.name}` : 'embedvault_basicinfo_submit_create')
-        .setTitle(isEdit ? `تعديل المعلومات الأساسية – ${embedDoc.name}` : 'إنشاء – المعلومات الأساسية');
+        .setTitle(modalTitle);
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(
@@ -450,9 +456,9 @@ export default function EmbedVaultModule(client) {
           
           const name = interaction.fields.getTextInputValue('embed_name').trim();
           const type = interaction.fields.getTextInputValue('embed_type').trim();
-          const title = interaction.fields.getTextInputValue('title');
-          const description = interaction.fields.getTextInputValue('description');
-          const color = interaction.fields.getTextInputValue('color').trim();
+          const title = interaction.fields.getTextInputValue('title') || undefined;
+          const description = interaction.fields.getTextInputValue('description') || undefined;
+          const color = interaction.fields.getTextInputValue('color').trim() || undefined;
 
           if (!name) return interaction.editReply({ content: '❌ اسم الإمبد مطلوب.' });
 
@@ -464,9 +470,10 @@ export default function EmbedVaultModule(client) {
           }
 
           const data = {};
-          if (title) data.title = title;
-          if (description) data.description = description;
-          if (color) data.color = color;
+          // Fix #2: Use !== undefined to allow clearing fields
+          if (title !== undefined) data.title = title;
+          if (description !== undefined) data.description = description;
+          if (color !== undefined) data.color = color;
 
           const errors = validateEmbed(data);
           if (errors.length > 0) {
@@ -489,15 +496,16 @@ export default function EmbedVaultModule(client) {
         if (customId.startsWith('embedvault_basicinfo_submit:')) {
           await interaction.deferReply({ ephemeral: true });
           
-          const originalName = customId.split(':')[1];
+          // Fix #4: Use .split(':').slice(1).join(':') to support names with colons
+          const originalName = customId.split(':').slice(1).join(':');
           const vaultItem = await this.getByName(interaction.guildId, originalName);
           if (!vaultItem) return interaction.editReply({ content: '❌ لم يتم العثور على الإمبد.' });
 
           const newName = interaction.fields.getTextInputValue('embed_name').trim();
           const newType = interaction.fields.getTextInputValue('embed_type').trim();
-          const title = interaction.fields.getTextInputValue('title');
-          const description = interaction.fields.getTextInputValue('description');
-          const color = interaction.fields.getTextInputValue('color').trim();
+          const title = interaction.fields.getTextInputValue('title') || undefined;
+          const description = interaction.fields.getTextInputValue('description') || undefined;
+          const color = interaction.fields.getTextInputValue('color').trim() || undefined;
 
           const validTypes = ['Welcome', 'Goodbye', 'Partner', 'Manual'];
           if (!validTypes.includes(newType)) {
@@ -507,11 +515,12 @@ export default function EmbedVaultModule(client) {
           }
 
           const updatedData = JSON.parse(JSON.stringify(vaultItem.data ?? {}));
-          if (title) updatedData.title = title;
+          // Fix #2: Use !== undefined for proper field clearing
+          if (title !== undefined) updatedData.title = title;
           else delete updatedData.title;
-          if (description) updatedData.description = description;
+          if (description !== undefined) updatedData.description = description;
           else delete updatedData.description;
-          if (color) updatedData.color = color;
+          if (color !== undefined) updatedData.color = color;
           else delete updatedData.color;
 
           const errors = validateEmbed(updatedData);
@@ -565,14 +574,15 @@ export default function EmbedVaultModule(client) {
         if (customId.startsWith('embedvault_authorfooter_submit:')) {
           await interaction.deferReply({ ephemeral: true });
           
-          const embedName = customId.split(':')[1];
+          // Fix #4: Use .split(':').slice(1).join(':') to support names with colons
+          const embedName = customId.split(':').slice(1).join(':');
           const vaultItem = await this.getByName(interaction.guildId, embedName);
           if (!vaultItem) return interaction.editReply({ content: '❌ لم يتم العثور على الإمبد.' });
 
-          const authorName = interaction.fields.getTextInputValue('author_name') || '';
-          const authorIcon = interaction.fields.getTextInputValue('author_icon') || '';
-          const footerText = interaction.fields.getTextInputValue('footer_text') || '';
-          const footerIcon = interaction.fields.getTextInputValue('footer_icon') || '';
+          const authorName = interaction.fields.getTextInputValue('author_name') || undefined;
+          const authorIcon = interaction.fields.getTextInputValue('author_icon') || undefined;
+          const footerText = interaction.fields.getTextInputValue('footer_text') || undefined;
+          const footerIcon = interaction.fields.getTextInputValue('footer_icon') || undefined;
 
           const updated = await this.upsert(
             interaction.guildId,
@@ -582,10 +592,11 @@ export default function EmbedVaultModule(client) {
             {
               linkedInviteCode: vaultItem.linkedInviteCode,
               linkedPartnerRole: vaultItem.linkedPartnerRole,
-              authorName,
-              authorIcon,
-              footerText,
-              footerIcon,
+              // Fix #3: Only set if data exists, don't set empty strings
+              authorName: authorName !== undefined && authorName ? authorName : (vaultItem.authorName || ''),
+              authorIcon: authorIcon !== undefined && authorIcon ? authorIcon : (vaultItem.authorIcon || ''),
+              footerText: footerText !== undefined && footerText ? footerText : (vaultItem.footerText || ''),
+              footerIcon: footerIcon !== undefined && footerIcon ? footerIcon : (vaultItem.footerIcon || ''),
               includeTimestamp: vaultItem.includeTimestamp,
             }
           );
@@ -612,22 +623,24 @@ export default function EmbedVaultModule(client) {
         if (customId.startsWith('embedvault_images_submit:')) {
           await interaction.deferReply({ ephemeral: true });
           
-          const embedName = customId.split(':')[1];
+          // Fix #4: Use .split(':').slice(1).join(':') to support names with colons
+          const embedName = customId.split(':').slice(1).join(':');
           const vaultItem = await this.getByName(interaction.guildId, embedName);
           if (!vaultItem) return interaction.editReply({ content: '❌ لم يتم العثور على الإمبد.' });
 
-          const imageUrl = interaction.fields.getTextInputValue('image_url') || '';
-          const thumbnailUrl = interaction.fields.getTextInputValue('thumbnail_url') || '';
+          const imageUrl = interaction.fields.getTextInputValue('image_url') || undefined;
+          const thumbnailUrl = interaction.fields.getTextInputValue('thumbnail_url') || undefined;
           const includeTimestampStr = interaction.fields.getTextInputValue('include_timestamp') || 'false';
           const includeTimestamp = includeTimestampStr.toLowerCase() === 'true';
 
           const updatedData = JSON.parse(JSON.stringify(vaultItem.data ?? {}));
-          if (imageUrl) {
+          // Fix #3: Only set if data exists
+          if (imageUrl !== undefined && imageUrl) {
             updatedData.image = { url: imageUrl };
           } else {
             delete updatedData.image;
           }
-          if (thumbnailUrl) {
+          if (thumbnailUrl !== undefined && thumbnailUrl) {
             updatedData.thumbnail = { url: thumbnailUrl };
           } else {
             delete updatedData.thumbnail;
@@ -662,7 +675,8 @@ export default function EmbedVaultModule(client) {
         if (customId.startsWith('embedvault_send_submit:')) {
           await interaction.deferReply({ ephemeral: true });
           
-          const embedName = customId.split(':')[1];
+          // Fix #4: Use .split(':').slice(1).join(':') to support names with colons
+          const embedName = customId.split(':').slice(1).join(':');
           const channelId = interaction.fields.getTextInputValue('channel_id').trim();
           
           const vaultItem = await this.getByName(interaction.guildId, embedName);
@@ -676,22 +690,25 @@ export default function EmbedVaultModule(client) {
 
             const renderedEmbed = render(buildFullData(vaultItem), { member: interaction.member });
             const embedToSend = new EmbedBuilder()
-              .setColor(renderedEmbed.color || 0x2f3136)
-              .setTitle(renderedEmbed.title || '')
-              .setDescription(renderedEmbed.description || '')
-              .setAuthor(
-                renderedEmbed.author
-                  ? { name: renderedEmbed.author.name, iconURL: renderedEmbed.author.iconURL }
-                  : null
-              )
-              .setFooter(
-                renderedEmbed.footer
-                  ? { text: renderedEmbed.footer.text, iconURL: renderedEmbed.footer.iconURL }
-                  : null
-              );
-
-            if (renderedEmbed.image) embedToSend.setImage(renderedEmbed.image.url);
-            if (renderedEmbed.thumbnail) embedToSend.setThumbnail(renderedEmbed.thumbnail.url);
+              .setColor(renderedEmbed.color || 0xDAA520);
+            
+            // Fix #3: Only set if data exists
+            if (renderedEmbed.title) embedToSend.setTitle(renderedEmbed.title);
+            if (renderedEmbed.description) embedToSend.setDescription(renderedEmbed.description);
+            if (renderedEmbed.author?.name) {
+              embedToSend.setAuthor({ 
+                name: renderedEmbed.author.name, 
+                iconURL: renderedEmbed.author.iconURL 
+              });
+            }
+            if (renderedEmbed.footer?.text) {
+              embedToSend.setFooter({ 
+                text: renderedEmbed.footer.text, 
+                iconURL: renderedEmbed.footer.iconURL 
+              });
+            }
+            if (renderedEmbed.image?.url) embedToSend.setImage(renderedEmbed.image.url);
+            if (renderedEmbed.thumbnail?.url) embedToSend.setThumbnail(renderedEmbed.thumbnail.url);
             if (renderedEmbed.timestamp) embedToSend.setTimestamp();
 
             await channel.send({ embeds: [embedToSend] });
@@ -715,11 +732,17 @@ export default function EmbedVaultModule(client) {
           
           try {
             const importedData = JSON.parse(jsonString);
-            if (!importedData.name) {
-              return interaction.editReply({ content: '❌ بيانات JSON يجب أن تحتوي على حقل "name".' });
+            
+            // Fix #3: Reliable import logic - parse embed name from JSON
+            if (!importedData.name || typeof importedData.name !== 'string' || !importedData.name.trim()) {
+              return interaction.editReply({ 
+                content: '❌ بيانات JSON يجب أن تحتوي على حقل "name" غير فارغ.' 
+              });
             }
 
-            const errors = validateEmbed(importedData);
+            // Ensure we have valid data structure
+            const dataToImport = importedData.data || importedData;
+            const errors = validateEmbed(dataToImport);
             if (errors.length > 0) {
               return interaction.editReply({
                 content: `❌ أخطاء في الصحة:\n${errors.map(e => `• ${e}`).join('\n')}`,
@@ -728,8 +751,8 @@ export default function EmbedVaultModule(client) {
 
             const created = await this.upsert(
               interaction.guildId,
-              importedData.name,
-              importedData,
+              importedData.name.trim(),
+              dataToImport,
               importedData.type || 'Manual'
             );
 
@@ -759,9 +782,15 @@ export default function EmbedVaultModule(client) {
 
     async openAuthorFooterModal(interaction, embedDoc = null) {
       const isEdit = !!embedDoc;
+      // Fix #1: Keep modal title under 45 characters
+      const truncatedName = embedDoc?.name ? embedDoc.name.slice(0, 15) : '';
+      const modalTitle = isEdit 
+        ? `تعديل: ${truncatedName}` 
+        : 'إنشاء – المؤلف/التذييل';
+      
       const modal = new ModalBuilder()
         .setCustomId(isEdit ? `embedvault_authorfooter_submit:${embedDoc.name}` : 'embedvault_authorfooter_submit_create')
-        .setTitle(isEdit ? `تعديل المؤلف/التذييل – ${embedDoc.name}` : 'إنشاء – المؤلف/التذييل');
+        .setTitle(modalTitle);
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(
@@ -807,9 +836,15 @@ export default function EmbedVaultModule(client) {
 
     async openImagesModal(interaction, embedDoc = null) {
       const isEdit = !!embedDoc;
+      // Fix #1: Keep modal title under 45 characters  
+      const truncatedName = embedDoc?.name ? embedDoc.name.slice(0, 20) : '';
+      const modalTitle = isEdit 
+        ? `تعديل: ${truncatedName}` 
+        : 'إنشاء – الصور';
+      
       const modal = new ModalBuilder()
         .setCustomId(isEdit ? `embedvault_images_submit:${embedDoc.name}` : 'embedvault_images_submit_create')
-        .setTitle(isEdit ? `تعديل الصور – ${embedDoc.name}` : 'إنشاء – الصور');
+        .setTitle(modalTitle);
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(
@@ -845,9 +880,11 @@ export default function EmbedVaultModule(client) {
     },
 
     async openSendModal(interaction, embedDoc) {
+      // Fix #1: Keep modal title under 45 characters
+      const truncatedName = embedDoc.name.slice(0, 20);
       const modal = new ModalBuilder()
         .setCustomId(`embedvault_send_submit:${embedDoc.name}`)
-        .setTitle(`إرسال الإمبد – ${embedDoc.name}`);
+        .setTitle(`إرسال: ${truncatedName}`);
 
       modal.addComponents(
         new ActionRowBuilder().addComponents(

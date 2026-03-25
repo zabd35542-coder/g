@@ -41,10 +41,8 @@ async function showSystemDashboard(interaction) {
   const { client, guildId } = interaction;
 
   // Get system data
-  const config = await GuildConfig.findOne({ guildId });
-
-  // Create initial embed (Events Map)
-  const embed = await createEventsMapEmbed(client, config);
+  const data = await client.embedHelper.getSystemMap(guildId);
+  const embed = new EmbedBuilder(data);
 
   // Create tab buttons
   const row = new ActionRowBuilder().addComponents(
@@ -53,10 +51,6 @@ async function showSystemDashboard(interaction) {
       .setLabel('خرائط الأحداث')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(true), // Initially selected
-    new ButtonBuilder()
-      .setCustomId('system_tab_partners')
-      .setLabel('شبكة الشركاء')
-      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('system_tab_permissions')
       .setLabel('فحص الصلاحيات')
@@ -68,75 +62,6 @@ async function showSystemDashboard(interaction) {
     components: [row],
     ephemeral: true,
   });
-}
-
-async function createEventsMapEmbed(client, config) {
-  const embed = new EmbedBuilder()
-    .setTitle('🗺️ خرائط الأحداث الإمبراطورية')
-    .setColor(0xDAA520)
-    .setDescription('حالة الإيمبد المرتبطة بالأحداث الرئيسية')
-    .setFooter({ text: 'نظام الرادار الإمبراطوري • Imperial Radar System' });
-
-  // Welcome
-  const welcomeEmbed = config?.welcome?.embedName || 'غير محدد';
-  const welcomeRole = config?.welcome?.autoRoleId ? `<@&${config.welcome.autoRoleId}>` : 'لا يوجد';
-  embed.addFields({
-    name: '👋 رسالة الترحيب',
-    value: `**إمبد:** ${welcomeEmbed}\n**دور تلقائي:** ${welcomeRole}`,
-    inline: true,
-  });
-
-  // Goodbye
-  const goodbyeEmbed = config?.goodbye?.embedName || 'غير محدد';
-  embed.addFields({
-    name: '👋 رسالة الوداع',
-    value: `**إمبد:** ${goodbyeEmbed}`,
-    inline: true,
-  });
-
-  // Boost
-  const boostEmbed = config?.boost?.embedName || 'غير محدد';
-  embed.addFields({
-    name: '🚀 تعزيز الخادم',
-    value: `**إمبد:** ${boostEmbed}`,
-    inline: true,
-  });
-
-  return embed;
-}
-
-async function createPartnersEmbed(client, config, page = 0) {
-  const embed = new EmbedBuilder()
-    .setTitle('🤝 شبكة الشركاء الإمبراطورية')
-    .setColor(0xDAA520)
-    .setDescription('روابط الدعوة المرتبطة بالإيمبد والأدوار')
-    .setFooter({ text: 'نظام الرادار الإمبراطوري • Imperial Radar System' });
-
-  const partners = config?.partners || [];
-  const itemsPerPage = 5;
-  const totalPages = Math.ceil(partners.length / itemsPerPage);
-  const startIdx = page * itemsPerPage;
-  const pagePartners = partners.slice(startIdx, startIdx + itemsPerPage);
-
-  if (pagePartners.length === 0) {
-    embed.setDescription('لا توجد شراكات محددة');
-  } else {
-    pagePartners.forEach((partner, index) => {
-      const globalIndex = startIdx + index + 1;
-      const inviteLink = partner.inviteLink || 'غير محدد';
-      const embedName = partner.embedName || 'غير محدد';
-      const role = partner.roleId ? `<@&${partner.roleId}>` : 'لا يوجد';
-      embed.addFields({
-        name: `🤝 الشريك ${globalIndex}`,
-        value: `**رابط الدعوة:** ${inviteLink}\n**إمبد مرتبط:** ${embedName}\n**دور معطى:** ${role}`,
-        inline: false,
-      });
-    });
-
-    embed.setFooter({ text: `الصفحة ${page + 1}/${totalPages} • نظام الرادار الإمبراطوري` });
-  }
-
-  return embed;
 }
 
 async function createPermissionsEmbed(client, guild) {

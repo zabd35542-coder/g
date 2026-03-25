@@ -60,18 +60,18 @@ async function bootstrap() {
     await connectDatabase();
     console.log('[1/4] DATABASE: Online.');
 
-    // ب. تشغيل المجدول الزمني (Scheduler)
-    const scheduler = new TaskScheduler(client);
-    scheduler.start();
-    console.log('[2/4] SCHEDULER: Ironclad Service Online.');
-
-    // ج. تحميل الأنظمة (Modules & Loaders)
+    // ب. تحميل الأنظمة (Modules & Loaders)
     await loadModules(client);
     client.embedVault = EmbedVault(client);
     initializeEmbedHelper(client); // Initialize embed helper after vault is ready
     await loadEvents(client);
     await loadCommands(client);
-    console.log('[3/4] LOADERS: All systems loaded.');
+    console.log('[2/4] LOADERS: All systems loaded.');
+
+    // ج. تشغيل المجدول الزمني (Scheduler)
+    const scheduler = new TaskScheduler(client);
+    scheduler.start();
+    console.log('[3/4] SCHEDULER: Ironclad Service Online.');
 
     // تشغيل الـ API Server
     startApi();

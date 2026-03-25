@@ -21,7 +21,7 @@ const EmbedVaultSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: ['Welcome', 'Goodbye', 'Partner', 'Manual'],
+      enum: ['Welcome', 'Goodbye', 'Partner', 'Manual', 'Boost'],
       default: 'Manual',
     },
     linkedInviteCode: {

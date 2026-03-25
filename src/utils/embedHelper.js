@@ -107,11 +107,11 @@ export class EmbedHelper {
   /**
    * Send welcome embed when member joins
    * @param {GuildMember} member - The joining member
-   * @param {string|null} usedInviteCode - The invite code used (if any)
+   * @param {Object|null} inviteInfo - The invite info { code, uses } or null
    * @param {Channel|null} channel - Optional override channel
    * @returns {Promise<boolean>} Success or failure
    */
-  async sendWelcomeEmbed(member, usedInviteCode = null, channel = null) {
+  async sendWelcomeEmbed(member, inviteInfo = null, channel = null) {
     try {
       const { guild } = member;
       if (!guild) return false;
@@ -126,10 +126,10 @@ export class EmbedHelper {
       }
 
       // Check partners array for matching invite
-      if (!embed && usedInviteCode && config?.partners) {
-        const partner = config.partners.find(p => p.inviteLink.includes(usedInviteCode));
+      if (!embed && inviteInfo?.code) {
+        const partner = config.partners.find(p => p.inviteLink === inviteInfo.code);
         if (partner) {
-          console.log(`[EmbedHelper] Welcome: partner found for invite "${usedInviteCode}": ${partner.embedName}`);
+          console.log(`[EmbedHelper] Welcome: partner found for invite "${inviteInfo.code}": ${partner.embedName}`);
           embed = await this.getEmbedByName(guild.id, partner.embedName);
           console.log(`[EmbedHelper] Welcome: partner embed found: ${!!embed}`);
         }
@@ -167,15 +167,8 @@ export class EmbedHelper {
       console.log(`[EmbedHelper] Welcome: sending embed "${embed.name}" to channel ${targetChannel.name}`);
 
       // Build context with all relevant info
-      let inviteUses = 0;
-      if (usedInviteCode) {
-        try {
-          const inv = await guild.invites.fetch(usedInviteCode);
-          inviteUses = inv?.uses ?? 0;
-        } catch (e) {
-          // silently fail
-        }
-      }
+      let inviteUses = inviteInfo?.uses || 0;
+      const usedInviteCode = inviteInfo?.code || null;
 
       const context = {
         member,
@@ -197,7 +190,7 @@ export class EmbedHelper {
       if (usedInviteCode) {
         let partnerRoleId = null;
         if (config?.partners) {
-          const partner = config.partners.find(p => p.inviteLink.includes(usedInviteCode));
+          const partner = config.partners.find(p => p.inviteLink === usedInviteCode);
           if (partner) {
             partnerRoleId = partner.roleId;
           }

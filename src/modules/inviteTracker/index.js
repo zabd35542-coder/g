@@ -67,7 +67,7 @@ export default function InviteTrackerModule(client) {
       }
 
       guildInvites.set(guild.id, currentMap);
-      return usedCode;
+      return usedCode ? { code: usedCode, uses: currentMap.get(usedCode) || previousMap.get(usedCode) || 0 } : null;
     } catch (err) {
       console.error('[InviteTracker] detectUsedInvite failed:', err);
       return null;

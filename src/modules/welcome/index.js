@@ -1,5 +1,6 @@
 import GuildConfig from '../config/GuildConfig.js';
 import { render } from '../../core/embedEngine.js';
+import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle } from 'discord.js';
 
 export default function WelcomeModule(client) {
   return {
@@ -87,17 +88,6 @@ export default function WelcomeModule(client) {
         if (embed) await channel.send({ embeds: [embed] });
       } catch (err) {
         console.error('[WelcomeModule.handleMemberRemove]', err);
-      }
-    },
-
-    async handleButtonInteraction(interaction) {
-      try {
-        return interaction.reply({
-          content: '⚠️ Deprecated welcome configuration path. Use the new Embed Helper flow via `/setup` and EmbedVault embeds.',
-          ephemeral: true,
-        });
-      } catch (err) {
-        console.error('[WelcomeModule.handleButtonInteraction]', err);
       }
     },
 

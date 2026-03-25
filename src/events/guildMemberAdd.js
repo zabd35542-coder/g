@@ -24,23 +24,12 @@ export default {
       // Delegate to unified EmbedHelper welcome path
       if (client && client.embedHelper && typeof client.embedHelper.sendWelcomeEmbed === 'function') {
         try {
-          console.log(`[GuildMemberAdd] New member: ${member.user?.tag || 'Unknown'} (invite: ${usedInviteCode || 'unknown'})`);
+          console.log(`[GuildMemberAdd] New member: ${member.user?.tag || 'Unknown'} (invite: ${usedInviteCode?.code || 'unknown'})`);
           await client.embedHelper.sendWelcomeEmbed(member, usedInviteCode);
         } catch (err) {
           console.error('[EmbedHelper] sendWelcomeEmbed error:', err);
         }
         return;
-      }
-
-      // Fallback for legacy gateway join path
-      try {
-        const cfg = await GatewayConfig.findOne({ guildId: member.guild.id });
-        if (cfg && cfg.methods?.join?.enabled && client.gateway && typeof client.gateway.handleMemberAdd === 'function') {
-          console.log('[GuildMemberAdd] Legacy gateway join enabled, delegating');
-          await client.gateway.handleMemberAdd(member);
-        }
-      } catch (legacyErr) {
-        // quietly ignore
       }
 
       // otherwise nothing to do (welcome module has taken over)

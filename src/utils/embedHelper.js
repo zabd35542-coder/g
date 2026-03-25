@@ -280,7 +280,7 @@ export class EmbedHelper {
         'member.name': member.user?.username || 'Unknown',
         'member.id': member.id,
         'member.tag': member.user?.tag || 'عضو غادرنا',
-        'member.avatar': member.user?.displayAvatarURL() || 'Imperial Logo',
+        'member.avatar': member.user?.displayAvatarURL() || this.client.user.displayAvatarURL(),
         'member.mention': `<@${member.id}>`,
         'server': guild.name,
         'server.name': guild.name,

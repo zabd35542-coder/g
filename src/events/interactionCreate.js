@@ -89,6 +89,14 @@ export default {
             await interaction.update({ embeds: [pages[newPage]], components });
             return;
           }
+          if (interaction.customId.startsWith('system_tab_')) {
+            await handleSystemTab(interaction);
+            return;
+          }
+          if (interaction.customId.startsWith('system_partners_')) {
+            await handleSystemPartnersPagination(interaction);
+            return;
+          }
           if (client.gateway?.handleInteraction) {
             await client.gateway.handleInteraction(interaction);
           }
@@ -274,3 +282,217 @@ export default {
     }
   },
 };
+
+// ── System Dashboard Handlers ──────────────────────────────────────────────
+async function handleSystemTab(interaction) {
+  await interaction.deferUpdate();
+
+  const { client, guild } = interaction;
+  const config = await GuildConfig.findOne({ guildId: guild.id });
+
+  let embed;
+  let components;
+
+  if (interaction.customId === 'system_tab_events') {
+    embed = await createEventsMapEmbed(client, config);
+    components = createSystemTabButtons('events');
+  } else if (interaction.customId === 'system_tab_partners') {
+    embed = await createPartnersEmbed(client, config, 0);
+    components = createSystemTabButtons('partners', config?.partners?.length || 0);
+  } else if (interaction.customId === 'system_tab_permissions') {
+    embed = await createPermissionsEmbed(client, guild);
+    components = createSystemTabButtons('permissions');
+  }
+
+  await interaction.editReply({ embeds: [embed], components });
+}
+
+async function handleSystemPartnersPagination(interaction) {
+  await interaction.deferUpdate();
+
+  const { client, guild } = interaction;
+  const config = await GuildConfig.findOne({ guildId: guild.id });
+
+  const parts = interaction.customId.split('_');
+  const action = parts[2]; // prev or next
+  const currentPage = parseInt(parts[3] || 0);
+
+  const partners = config?.partners || [];
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(partners.length / itemsPerPage);
+
+  let newPage = currentPage;
+  if (action === 'prev') {
+    newPage = Math.max(0, currentPage - 1);
+  } else if (action === 'next') {
+    newPage = Math.min(totalPages - 1, currentPage + 1);
+  }
+
+  const embed = await createPartnersEmbed(client, config, newPage);
+  const components = createSystemTabButtons('partners', partners.length, newPage);
+
+  await interaction.editReply({ embeds: [embed], components });
+}
+
+function createSystemTabButtons(activeTab, partnersCount = 0, partnersPage = 0) {
+  const row1 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId('system_tab_events')
+      .setLabel('خرائط الأحداث')
+      .setStyle(activeTab === 'events' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(activeTab === 'events'),
+    new ButtonBuilder()
+      .setCustomId('system_tab_partners')
+      .setLabel('شبكة الشركاء')
+      .setStyle(activeTab === 'partners' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(activeTab === 'partners'),
+    new ButtonBuilder()
+      .setCustomId('system_tab_permissions')
+      .setLabel('فحص الصلاحيات')
+      .setStyle(activeTab === 'permissions' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(activeTab === 'permissions')
+  );
+
+  if (activeTab === 'partners' && partnersCount > 5) {
+    const itemsPerPage = 5;
+    const totalPages = Math.ceil(partnersCount / itemsPerPage);
+    const row2 = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`system_partners_prev_${partnersPage}`)
+        .setLabel('⬅️ السابق')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(partnersPage === 0),
+      new ButtonBuilder()
+        .setCustomId(`system_partners_next_${partnersPage}`)
+        .setLabel('التالي ➡️')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(partnersPage >= totalPages - 1)
+    );
+    return [row1, row2];
+  }
+
+  return [row1];
+}
+
+// Import the embed creation functions from system.js
+async function createEventsMapEmbed(client, config) {
+  const { EmbedBuilder } = await import('discord.js');
+  const embed = new EmbedBuilder()
+    .setTitle('🗺️ خرائط الأحداث الإمبراطورية')
+    .setColor(0xDAA520)
+    .setDescription('حالة الإيمبد المرتبطة بالأحداث الرئيسية')
+    .setFooter({ text: 'نظام الرادار الإمبراطوري • Imperial Radar System' });
+
+  // Welcome
+  const welcomeEmbed = config?.welcome?.embedName || 'غير محدد';
+  const welcomeRole = config?.welcome?.autoRoleId ? `<@&${config.welcome.autoRoleId}>` : 'لا يوجد';
+  embed.addFields({
+    name: '👋 رسالة الترحيب',
+    value: `**إمبد:** ${welcomeEmbed}\n**دور تلقائي:** ${welcomeRole}`,
+    inline: true,
+  });
+
+  // Goodbye
+  const goodbyeEmbed = config?.goodbye?.embedName || 'غير محدد';
+  embed.addFields({
+    name: '👋 رسالة الوداع',
+    value: `**إمبد:** ${goodbyeEmbed}`,
+    inline: true,
+  });
+
+  // Boost
+  const boostEmbed = config?.boost?.embedName || 'غير محدد';
+  embed.addFields({
+    name: '🚀 تعزيز الخادم',
+    value: `**إمبد:** ${boostEmbed}`,
+    inline: true,
+  });
+
+  return embed;
+}
+
+async function createPartnersEmbed(client, config, page = 0) {
+  const { EmbedBuilder } = await import('discord.js');
+  const embed = new EmbedBuilder()
+    .setTitle('🤝 شبكة الشركاء الإمبراطورية')
+    .setColor(0xDAA520)
+    .setDescription('روابط الدعوة المرتبطة بالإيمبد والأدوار')
+    .setFooter({ text: 'نظام الرادار الإمبراطوري • Imperial Radar System' });
+
+  const partners = config?.partners || [];
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(partners.length / itemsPerPage);
+  const startIdx = page * itemsPerPage;
+  const pagePartners = partners.slice(startIdx, startIdx + itemsPerPage);
+
+  if (pagePartners.length === 0) {
+    embed.setDescription('لا توجد شراكات محددة');
+  } else {
+    pagePartners.forEach((partner, index) => {
+      const globalIndex = startIdx + index + 1;
+      const inviteLink = partner.inviteLink || 'غير محدد';
+      const embedName = partner.embedName || 'غير محدد';
+      const role = partner.roleId ? `<@&${partner.roleId}>` : 'لا يوجد';
+      embed.addFields({
+        name: `🤝 الشريك ${globalIndex}`,
+        value: `**رابط الدعوة:** ${inviteLink}\n**إمبد مرتبط:** ${embedName}\n**دور معطى:** ${role}`,
+        inline: false,
+      });
+    });
+
+    embed.setFooter({ text: `الصفحة ${page + 1}/${totalPages} • نظام الرادار الإمبراطوري` });
+  }
+
+  return embed;
+}
+
+async function createPermissionsEmbed(client, guild) {
+  const { EmbedBuilder } = await import('discord.js');
+  const embed = new EmbedBuilder()
+    .setTitle('🔍 فحص صلاحيات النظام')
+    .setColor(0xDAA520)
+    .setDescription('تشخيص صلاحيات البوت في الخادم')
+    .setFooter({ text: 'نظام الرادار الإمبراطوري • Imperial Radar System' });
+
+  const botMember = guild.members.me;
+  const permissions = botMember.permissions.toArray();
+
+  const keyPermissions = [
+    'Administrator',
+    'ManageGuild',
+    'ManageRoles',
+    'ManageChannels',
+    'KickMembers',
+    'BanMembers',
+    'ViewAuditLog',
+    'SendMessages',
+    'EmbedLinks',
+    'AttachFiles',
+    'UseExternalEmojis',
+    'AddReactions',
+  ];
+
+  const permStatus = keyPermissions.map(perm => {
+    const has = permissions.includes(perm);
+    return `${has ? '✅' : '❌'} ${perm}`;
+  }).join('\n');
+
+  embed.addFields({
+    name: '🔑 الصلاحيات الرئيسية',
+    value: permStatus,
+    inline: false,
+  });
+
+  // Check channels
+  const channels = guild.channels.cache;
+  const textChannels = channels.filter(c => c.isTextBased());
+  const accessibleChannels = textChannels.filter(c => c.permissionsFor(botMember).has('SendMessages'));
+
+  embed.addFields({
+    name: '📢 قنوات النص',
+    value: `إجمالي: ${textChannels.size}\nيمكن الكتابة: ${accessibleChannels.size}`,
+    inline: true,
+  });
+
+  return embed;
+}

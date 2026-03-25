@@ -1,6 +1,5 @@
 export default function InviteTrackerModule(client) {
   const guildInvites = new Map();
-  const processingGuilds = new Set(); // Mutex: prevents concurrent processing for same guild
 
   async function loadInvitesForGuild(guild) {
     if (!guild || !guild.invites) return;
@@ -28,14 +27,6 @@ export default function InviteTrackerModule(client) {
 
   async function detectUsedInvite(guild) {
     if (!guild) return null;
-
-    // ─── MUTEX: Prevent race conditions on concurrent member joins ───
-    // If this guild is already being processed, wait for it
-    while (processingGuilds.has(guild.id)) {
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-
-    processingGuilds.add(guild.id);
 
     try {
       const previousMap = guildInvites.get(guild.id) || new Map();
@@ -71,9 +62,6 @@ export default function InviteTrackerModule(client) {
     } catch (err) {
       console.error('[InviteTracker] detectUsedInvite failed:', err);
       return null;
-    } finally {
-      // ─── Release MUTEX lock ───
-      processingGuilds.delete(guild.id);
     }
   }
 

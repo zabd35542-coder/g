@@ -60,6 +60,7 @@ const GuildConfigSchema = new mongoose.Schema(
       inviteLink: {
         type: String,
         default: '',
+        index: true,
       },
     }],
   },

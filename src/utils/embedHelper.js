@@ -127,7 +127,7 @@ export class EmbedHelper {
 
       // Check partners array for matching invite
       if (!embed && inviteInfo?.code) {
-        const partner = config.partners.find(p => p.inviteLink === inviteInfo.code);
+        const partner = config.partners.find(p => p.inviteLink.split('/').pop() === inviteInfo.code);
         if (partner) {
           console.log(`[EmbedHelper] Welcome: partner found for invite "${inviteInfo.code}": ${partner.embedName}`);
           embed = await this.getEmbedByName(guild.id, partner.embedName);

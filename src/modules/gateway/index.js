@@ -70,7 +70,8 @@ export default function GatewayModule(client) {
           if (message.deletable) await message.delete().catch(() => {});
           await new Promise(r => setTimeout(r, 2000));
           const idCardEmbed = await createEmbed(config, DEFAULT_ID_CARD, 'success', message.member);
-          await loadingMsg.edit({ embeds: [idCardEmbed] });
+          await message.channel.send({ embeds: [idCardEmbed] });
+          if (loadingMsg?.deletable) await loadingMsg.delete().catch(() => {});
 
           // Auto-Stick: Delete old prompt and re-send
           if (config.methods?.trigger?.promptMessageId) {

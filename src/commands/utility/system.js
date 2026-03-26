@@ -54,6 +54,10 @@ async function showSystemDashboard(interaction) {
     new ButtonBuilder()
       .setCustomId('system_tab_permissions')
       .setLabel('فحص الصلاحيات')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('system_tab_partners')
+      .setLabel('شبكة الشركاء')
       .setStyle(ButtonStyle.Secondary)
   );
 

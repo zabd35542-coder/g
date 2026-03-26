@@ -8,45 +8,45 @@ export default {
     .setDescription('بدء عملية التحقق • Run the verification flow.'),
   async execute(interaction) {
     try {
+      await interaction.deferReply({ ephemeral: true });
+
       const { guild, member } = interaction;
       const config = await GatewayConfig.findOne({ guildId: guild.id });
       if (!config?.enabled || !config.methods?.slash?.enabled)
-        return interaction.reply({ content: '❌ Slash verification is disabled.', ephemeral: true });
+        return interaction.editReply({ content: '❌ Slash verification is disabled.' });
       if (interaction.channelId !== config.methods.slash.channel)
-        return interaction.reply({ content: `❌ Only works in <#${config.methods.slash.channel}>`, ephemeral: true });
+        return interaction.editReply({ content: `❌ Only works in <#${config.methods.slash.channel}>` });
 
       // handle lockdown levels
       const lockdownResult = await getLockdownResponse(member, config, 'slash');
       if (lockdownResult) {
         if (lockdownResult.lockdown === 1 || lockdownResult.lockdown === 2) {
           await startDMVerification(member, config);
-          return interaction.reply({
+          return interaction.editReply({
             content: '⚠️ Security Lockdown Active. Check your DMs to complete advanced human verification.',
-            ephemeral: true,
           });
         }
         if (lockdownResult.lockdown === 3) {
-          return interaction.reply({ content: lockdownResult.message, ephemeral: true });
+          return interaction.editReply({ content: lockdownResult.message });
         }
       }
 
       const result = lockdownResult && !lockdownResult.lockdown ? lockdownResult : await verifyMember(member, config, 'slash');
       if (result.processing)
-        return interaction.reply({ content: '⏳ Please wait...', ephemeral: true });
+        return interaction.editReply({ content: '⏳ Please wait...' });
 
       if (result.alreadyVerified) {
         const embed = await createEmbed(config, result.message, 'alreadyVerified', member);
-        return interaction.reply({ embeds: [embed], ephemeral: false });
+        return interaction.editReply({ embeds: [embed] });
       } else if (result.success) {
         const loadingEmbed = await createEmbed(config, '🔄 Processing...', 'success', member);
-        await interaction.reply({ embeds: [loadingEmbed] });
+        await interaction.editReply({ embeds: [loadingEmbed] });
         await new Promise(r => setTimeout(r, 2000));
         const idCardEmbed = await createEmbed(config, DEFAULT_ID_CARD, 'success', member);
         await interaction.editReply({ embeds: [idCardEmbed] });
       } else {
-        await interaction.reply({
+        await interaction.editReply({
           content: `❌ Verification failed: ${result.message}`,
-          ephemeral: true,
         });
       }
     } catch (err) {

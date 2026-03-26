@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import crypto from 'crypto';
 import { validateRaidShield } from './checker.js';
 import { parseColor } from '../../utils/parseColor.js';
 import { render as renderEmbed } from '../../core/embedEngine.js';
@@ -29,12 +30,14 @@ const _activeGauntlets = new Map();
 /**
  * Generate a short one-time token used in Level 2 lockdown verification.
  * This is intended to be displayed in-channel then validated via DM.
+ * Uses crypto.randomBytes for secure random generation.
  */
 export function generateToken(length = 6) {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const bytes = crypto.randomBytes(length);
   let token = '';
   for (let i = 0; i < length; i += 1) {
-    token += alphabet[Math.floor(Math.random() * alphabet.length)];
+    token += alphabet[bytes[i] % alphabet.length];
   }
   return token;
 }

@@ -113,6 +113,9 @@ export class EmbedHelper {
    */
   async sendWelcomeEmbed(member, inviteInfo = null, channel = null) {
     try {
+      // Move variable definition to TOP to avoid ReferenceError (TDZ)
+      const usedInviteCode = inviteInfo?.code || null;
+
       const { guild } = member;
       if (!guild) return false;
 
@@ -168,7 +171,6 @@ export class EmbedHelper {
 
       // Build context with all relevant info
       let inviteUses = inviteInfo?.uses || 0;
-      const usedInviteCode = inviteInfo?.code || null;
 
       const context = {
         member,

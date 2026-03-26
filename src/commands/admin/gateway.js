@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import GatewayConfig from '../../modules/gateway/schema.js';
 import { createEmbed } from '../../modules/gateway/actions.js';
 

@@ -1,6 +1,6 @@
 import GuildConfig from '../config/GuildConfig.js';
 import { render } from '../../core/embedEngine.js';
-import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, MessageFlags } from 'discord.js';
 
 class WelcomeModule {
   constructor(client) {

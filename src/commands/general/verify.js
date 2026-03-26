@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, MessageFlags } from 'discord.js';
 import GatewayConfig from '../../modules/gateway/schema.js';
 import { verifyMember, createEmbed, DEFAULT_ID_CARD, startDMVerification, getLockdownResponse } from '../../modules/gateway/actions.js';
 

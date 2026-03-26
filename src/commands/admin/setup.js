@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChannelType, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChannelType, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } from 'discord.js';
 import GuildConfig from '../../modules/config/GuildConfig.js';
 
 export default {

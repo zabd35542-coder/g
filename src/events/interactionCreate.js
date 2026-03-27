@@ -26,11 +26,12 @@ export default {
 
       // ── Slash Commands ──────────────────────────────────────────────────────
       if (interaction.isChatInputCommand()) {
-        if (!interaction.deferred && !interaction.replied) {
-          await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => {});
-        }
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
+        // Commands marked skipDefer handle their own acknowledgement (e.g. showModal)
+        if (!command.skipDefer && !interaction.deferred && !interaction.replied) {
+          await interaction.deferReply({ flags: [MessageFlags.Ephemeral] }).catch(() => {});
+        }
         try {
           await command.execute(interaction);
         } catch (cmdErr) {
@@ -53,22 +54,23 @@ export default {
 
       // ── Buttons ─────────────────────────────────────────────────────────────
       if (interaction.isButton()) {
-        if (!interaction.deferred && !interaction.replied) {
-          await interaction.deferUpdate().catch(() => {});
-        }
         try {
           if (interaction.customId.startsWith('welcome_') && client.welcome?.handleButtonInteraction) {
+            if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
             await client.welcome.handleButtonInteraction(interaction);
             return;
           }
           if (interaction.customId.startsWith('system_tab_')) {
+            if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
             await handleSystemTab(interaction);
             return;
           }
           if (interaction.customId.startsWith('system_partners_')) {
+            if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
             await handleSystemPartnersPagination(interaction);
             return;
           }
+          // Gateway handles its own deferral (uses deferReply for ephemeral responses)
           if (client.gateway?.handleInteraction) {
             await client.gateway.handleInteraction(interaction);
           }

@@ -10,6 +10,7 @@ import {
 import { render as renderEmbed } from '../core/VisualEngine.js';
 
 export default {
+  skipDefer: true,
   data: new SlashCommandBuilder()
     .setName('design')
     .setDescription('Design and preview a lightweight embed.')
@@ -67,17 +68,17 @@ export default {
         };
 
         const embed = renderEmbed(previewStructure, interaction.member);
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] });
         return;
       }
 
-      await interaction.reply({ content: 'Unknown design subcommand.', ephemeral: true });
+      await interaction.reply({ content: 'Unknown design subcommand.', flags: [MessageFlags.Ephemeral] });
     } catch (err) {
       console.error('[design command] error:', err);
       if (interaction.replied || interaction.deferred) {
         await interaction.editReply({ content: 'Failed to run /design command.' });
       } else {
-        await interaction.reply({ content: 'Failed to run /design command.', ephemeral: true });
+        await interaction.reply({ content: 'Failed to run /design command.', flags: [MessageFlags.Ephemeral] });
       }
     }
   },

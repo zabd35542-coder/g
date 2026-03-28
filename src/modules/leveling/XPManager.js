@@ -7,6 +7,16 @@ class XPManager {
     this.cooldowns = new Map();
     this.COOLDOWN_TIME = 60000; // 1 minute cooldown
     this.economyManager = new EconomyManager();
+    
+    // Clean up old cooldowns every 5 minutes to prevent memory leaks
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, timestamp] of this.cooldowns.entries()) {
+        if (now - timestamp > this.COOLDOWN_TIME * 2) {
+          this.cooldowns.delete(key);
+        }
+      }
+    }, 5 * 60 * 1000); // 5 minutes
   }
 
   async addXP(member, amount, reason = 'message') {

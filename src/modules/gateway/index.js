@@ -322,3 +322,8 @@ export default function GatewayModule(client) {
     },
   };
 }
+
+// Export additional functions for backward compatibility
+export { verifyMember, createEmbed, startStrictGauntlet, DEFAULT_ID_CARD, getLockdownResponse, sendVerificationPrompt, startDMVerification } from './actions.js';
+export { GatewayManager } from './GatewayManager.js';
+export { calculateRiskScore, getRiskLevel, getRiskColor } from './RiskEngine.js';

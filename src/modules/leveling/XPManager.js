@@ -1,10 +1,12 @@
 import { LevelingModel } from './LevelingModel.js';
 import { xpForLevel, levelFromXP } from './LevelUtils.js';
+import EconomyManager from '../Economy/EconomyManager.js';
 
 class XPManager {
   constructor() {
     this.cooldowns = new Map();
     this.COOLDOWN_TIME = 60000; // 1 minute cooldown
+    this.economyManager = new EconomyManager();
   }
 
   async addXP(member, amount, reason = 'message') {
@@ -53,6 +55,18 @@ class XPManager {
 
       const leveledUp = newLevel > oldLevel;
 
+      // Grant economy reward for leveling up
+      let rewardResult = null;
+      if (leveledUp) {
+        const rewardAmount = newLevel * 100; // level * 100 coins
+        rewardResult = await this.economyManager.addMoney(
+          member.id,
+          member.guild.id,
+          rewardAmount,
+          'coins'
+        );
+      }
+
       return {
         success: true,
         oldLevel,
@@ -62,6 +76,7 @@ class XPManager {
         totalXP: levelingData.totalXP,
         currentXP: levelingData.xp,
         xpToNext: xpForLevel(newLevel + 1) - levelingData.xp,
+        reward: rewardResult,
       };
 
     } catch (error) {

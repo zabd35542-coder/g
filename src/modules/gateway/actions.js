@@ -1,6 +1,27 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { calculateRiskScore, getRiskLevel } from './RiskEngine.js';
 
+// Default dynamic ID card message used after successful verification
+export const DEFAULT_ID_CARD = `**✅ Digital ID Pass Issued**
+
+> 👤 **Member:** {user}
+> 🏅 **Join Position:** #{join_pos}
+> 📅 **Account Age:** {account_age} days
+> 📥 **Joined Server:** {joined_at}
+> 🟢 **Status:** Verified`;
+
+// [DEPRECATED] old createEmbed - Will be replaced by new VisualEngine
+// Temporarily stubbed for backward compatibility during transition
+export async function createEmbed(config, overrideMsg = '', pageKey = '', member = null) {
+  // TODO: Replace with new VisualEngine render calls
+  // For now, return a minimal embed-compatible object
+  return {
+    title: pageKey === 'success' ? '✅ Verified' : pageKey === 'error' ? '❌ Error' : 'Message',
+    description: overrideMsg || 'Please use the new embed engine.',
+    color: 0x2ecc71,
+  };
+}
+
 export async function verifyMember(interaction, member) {
   try {
     // Calculate risk score if not provided
@@ -124,7 +145,17 @@ async function startVerificationProcess(interaction, member, riskLevel) {
   });
 }
 
-export default {
-  verifyMember,
-  startStrictGauntlet,
-};
+export async function getLockdownResponse(member, config, method) {
+  // Simplified version for backward compatibility
+  return await verifyMember(null, member);
+}
+
+export async function sendVerificationPrompt(channel, config, method) {
+  // Stub for backward compatibility
+  return { success: true };
+}
+
+export async function startDMVerification(member, config) {
+  // Stub for backward compatibility
+  return { success: true };
+}

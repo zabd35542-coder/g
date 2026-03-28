@@ -1,4 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
+import { VisualParser } from './VisualEngine/Parser.js';
 
 function interpolate(text, tokens = {}) {
   if (typeof text !== 'string') return text;
@@ -100,3 +101,8 @@ export async function render(embedDocOrName = null, member = null) {
     return createFallbackEmbed(member);
   }
 }
+
+export default {
+  render,
+  VisualParser,
+};
